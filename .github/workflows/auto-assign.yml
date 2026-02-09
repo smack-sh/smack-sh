@@ -1,0 +1,86 @@
+name: Intelligent Auto Assign
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  intelligent-assign:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect changed files
+        id: files
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --jq '.[].filename' > files.txt
+          else
+            gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }} --jq '.body' > files.txt
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract recent commit data
+        run: |
+          gh api repos/${{ github.repository }}/commits --paginate --jq '.[] | {author: .commit.author.name, email: .commit.author.email, files: [.files[].filename]}' > commits.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Score contributors
+        id: score
+        run: |
+          python3 <<'EOF'
+          import json
+          from collections import defaultdict
+          files = set(open("files.txt").read().splitlines())
+          commits = json.load(open("commits.json"))
+          scores = defaultdict(int)
+          for c in commits:
+              author = c.get("author")
+              if not author:
+                  continue
+              touched = set(c.get("files", []))
+              overlap = files & touched
+              if overlap:
+                  scores[author] += len(overlap) * 3
+              scores[author] += 1
+          if not scores:
+              print("assignee=fallback")
+              exit(0)
+          best = max(scores, key=scores.get)
+          print(f"assignee={best}")
+          EOF
+
+      - name: Resolve GitHub username
+        id: user
+        run: |
+          name="${{ steps.score.outputs.assignee }}"
+          user=$(gh api search/users -f q="$name" --jq '.items[0].login')
+          echo "login=$user" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assign issue
+        if: github.event_name == 'issues'
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/assignees \
+            -X POST -f assignees[]="${{ steps.user.outputs.login }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assign pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/assignees \
+            -X POST -f assignees[]="${{ steps.user.outputs.login }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

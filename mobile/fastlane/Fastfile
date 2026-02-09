@@ -1,0 +1,22 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build the iOS app"
+  lane :build do
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store"
+    )
+  end
+end
+
+platform :android do
+  desc "Build the Android app"
+  lane :build do
+    build_android_app(
+      task: "build",
+      build_type: "Release"
+    )
+  end
+end

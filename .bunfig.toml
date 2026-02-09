@@ -1,0 +1,9 @@
+[install]
+# To make some packages work that are designed for node,
+# it's best to tell bun to use node to install them
+use = "npm"
+
+[run]
+# Similarly, some packages might not work with bun's runtime
+# so we can tell bun to use node to run them
+using = "node"

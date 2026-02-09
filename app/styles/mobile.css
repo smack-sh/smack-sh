@@ -1,0 +1,21 @@
+/* Increase tap targets for buttons and interactive elements */
+button,
+[role="button"],
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Larger spacing for chat messages */
+.chat-message {
+  padding: 1rem;
+}
+
+/* Hide scrollbars on mobile where they are not needed */
+.modern-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.modern-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}

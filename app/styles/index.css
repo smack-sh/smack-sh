@@ -1,0 +1,61 @@
+@import './variables.css';
+@import './z-index.css';
+@import './animations.css';
+@import './components/terminal.css';
+@import './components/resize-handle.css';
+@import './components/code.css';
+@import './components/editor.css';
+@import './components/toast.css';
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background-color: var(--smack-elements-bg-depth-1);
+}
+
+:root {
+  --gradient-opacity: 0.8;
+  --primary-color: rgba(255, 95, 95, var(--gradient-opacity));
+  --secondary-color: rgba(232, 69, 69, var(--gradient-opacity));
+  --accent-color: rgba(255, 125, 125, var(--gradient-opacity));
+}
+
+.modern-scrollbar {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--modern-scrollbar-thumb-backgroundHover) transparent;
+}
+
+.modern-scrollbar::-webkit-scrollbar {
+  width: 2px;
+  height: 4px;
+}
+
+.modern-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--modern-scrollbar-thumb-background);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--modern-scrollbar-thumb-backgroundHover);
+}
+
+.modern-scrollbar-invert::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--smack-elements-textPrimary), transparent 70%);
+}
+
+.modern-scrollbar-invert::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--smack-elements-textPrimary), transparent 50%);
+}
+
+.modern-scrollbar-invert {
+  scrollbar-color: color-mix(in srgb, var(--smack-elements-textPrimary), transparent 50%) transparent;
+}

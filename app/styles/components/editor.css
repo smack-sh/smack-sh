@@ -1,0 +1,117 @@
+:root {
+  --cm-backgroundColor: var(--smack-elements-editor-backgroundColor, var(--smack-elements-bg-depth-1));
+  --cm-textColor: var(--smack-elements-editor-textColor, var(--smack-elements-textPrimary));
+
+  --cm-gutter-backgroundColor: var(--smack-elements-editor-gutter-backgroundColor, var(--cm-backgroundColor));
+  --cm-gutter-textColor: var(--smack-elements-editor-gutter-textColor, var(--smack-elements-textSecondary));
+  --cm-gutter-activeLineTextColor: var(--smack-elements-editor-gutter-activeLineTextColor, var(--cm-gutter-textColor));
+
+  --cm-foldGutter-textColor: var(--smack-elements-editor-foldGutter-textColor, var(--cm-gutter-textColor));
+  --cm-foldGutter-textColorHover: var(--smack-elements-editor-foldGutter-textColorHover, var(--cm-gutter-textColor));
+
+  --cm-activeLineBackgroundColor: var(--smack-elements-editor-activeLineBackgroundColor, rgb(224 231 235 / 30%));
+
+  --cm-cursor-width: 2px;
+  --cm-cursor-backgroundColor: var(--smack-elements-editor-cursorColor, var(--smack-elements-textSecondary));
+
+  --cm-matching-bracket: var(--smack-elements-editor-matchingBracketBackgroundColor, rgb(50 140 130 / 0.3));
+
+  --cm-selection-backgroundColorFocused: var(--smack-elements-editor-selection-backgroundColor, #42b4ff);
+  --cm-selection-backgroundOpacityFocused: var(--smack-elements-editor-selection-backgroundOpacity, 0.3);
+  --cm-selection-backgroundColorBlured: var(--smack-elements-editor-selection-inactiveBackgroundColor, #c9e9ff);
+  --cm-selection-backgroundOpacityBlured: var(--smack-elements-editor-selection-inactiveBackgroundOpacity, 0.3);
+
+  --cm-panels-borderColor: var(--smack-elements-editor-panels-borderColor, var(--smack-elements-borderColor));
+
+  --cm-search-backgroundColor: var(--smack-elements-editor-search-backgroundColor, var(--cm-backgroundColor));
+  --cm-search-textColor: var(--smack-elements-editor-search-textColor, var(--smack-elements-textSecondary));
+  --cm-search-closeButton-backgroundColor: var(--smack-elements-editor-search-closeButton-backgroundColor, transparent);
+
+  --cm-search-closeButton-backgroundColorHover: var(
+    --smack-elements-editor-search-closeButton-backgroundColorHover,
+    var(--smack-elements-item-backgroundActive)
+  );
+
+  --cm-search-closeButton-textColor: var(
+    --smack-elements-editor-search-closeButton-textColor,
+    var(--smack-elements-item-contentDefault)
+  );
+
+  --cm-search-closeButton-textColorHover: var(
+    --smack-elements-editor-search-closeButton-textColorHover,
+    var(--smack-elements-item-contentActive)
+  );
+
+  --cm-search-button-backgroundColor: var(
+    --smack-elements-editor-search-button-backgroundColor,
+    var(--smack-elements-item-backgroundDefault)
+  );
+
+  --cm-search-button-backgroundColorHover: var(
+    --smack-elements-editor-search-button-backgroundColorHover,
+    var(--smack-elements-item-backgroundActive)
+  );
+
+  --cm-search-button-textColor: var(--smack-elements-editor-search-button-textColor, var(--smack-elements-textSecondary));
+
+  --cm-search-button-textColorHover: var(
+    --smack-elements-editor-search-button-textColorHover,
+    var(--smack-elements-textPrimary)
+  );
+
+  --cm-search-button-borderColor: var(--smack-elements-editor-search-button-borderColor, transparent);
+  --cm-search-button-borderColorHover: var(--smack-elements-editor-search-button-borderColorHover, transparent);
+
+  --cm-search-button-borderColorFocused: var(
+    --smack-elements-editor-search-button-borderColorFocused,
+    var(--smack-elements-borderColorActive)
+  );
+
+  --cm-search-input-backgroundColor: var(--smack-elements-editor-search-input-backgroundColor, transparent);
+  --cm-search-input-textColor: var(--smack-elements-editor-search-input-textColor, var(--smack-elements-textPrimary));
+  --cm-search-input-borderColor: var(--smack-elements-editor-search-input-borderColor, var(--smack-elements-borderColor));
+
+  --cm-search-input-borderColorFocused: var(
+    --smack-elements-editor-search-input-borderColorFocused,
+    var(--smack-elements-borderColorActive)
+  );
+
+  --cm-tooltip-backgroundColor: var(--smack-elements-editor-tooltip-backgroundColor, var(--cm-backgroundColor));
+  --cm-tooltip-textColor: var(--smack-elements-editor-tooltip-textColor, var(--smack-elements-textPrimary));
+
+  --cm-tooltip-backgroundColorSelected: var(
+    --smack-elements-editor-tooltip-backgroundColorSelected,
+    theme('colors.alpha.accent.30')
+  );
+
+  --cm-tooltip-textColorSelected: var(
+    --smack-elements-editor-tooltip-textColorSelected,
+    var(--smack-elements-textPrimary)
+  );
+
+  --cm-tooltip-borderColor: var(--smack-elements-editor-tooltip-borderColor, var(--smack-elements-borderColor));
+
+  --cm-searchMatch-backgroundColor: var(--smack-elements-editor-searchMatch-backgroundColor, rgba(234, 92, 0, 0.33));
+}
+
+html[data-theme='light'] {
+  --smack-elements-editor-gutter-textColor: #237893;
+  --smack-elements-editor-gutter-activeLineTextColor: var(--smack-elements-textPrimary);
+  --smack-elements-editor-foldGutter-textColorHover: var(--smack-elements-textPrimary);
+  --smack-elements-editor-activeLineBackgroundColor: rgb(50 53 63 / 5%);
+  --smack-elements-editor-tooltip-backgroundColorSelected: theme('colors.alpha.accent.20');
+  --smack-elements-editor-search-button-backgroundColor: theme('colors.gray.100');
+  --smack-elements-editor-search-button-backgroundColorHover: theme('colors.alpha.gray.10');
+}
+
+html[data-theme='dark'] {
+  --cm-backgroundColor: var(--smack-elements-bg-depth-2);
+  --smack-elements-editor-gutter-textColor: var(--smack-elements-textTertiary);
+  --smack-elements-editor-gutter-activeLineTextColor: var(--smack-elements-textSecondary);
+  --smack-elements-editor-selection-inactiveBackgroundOpacity: 0.3;
+  --smack-elements-editor-activeLineBackgroundColor: rgb(50 53 63 / 50%);
+  --smack-elements-editor-foldGutter-textColorHover: var(--smack-elements-textPrimary);
+  --smack-elements-editor-matchingBracketBackgroundColor: rgba(66, 180, 255, 0.3);
+  --smack-elements-editor-search-button-backgroundColor: theme('colors.gray.800');
+  --smack-elements-editor-search-button-backgroundColorHover: theme('colors.alpha.white.10');
+}

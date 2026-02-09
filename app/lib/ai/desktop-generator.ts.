@@ -1,0 +1,61 @@
+// app/lib/ai/desktop-generator.ts
+
+export interface DesktopAppSpecification {
+  projectName: string;
+  templateName: string; // e.g., "Electron + React", "Tauri + React"
+  features: string[]; // e.g., "file handling", "system tray", "notifications"
+  uiDescription: string; // detailed description of UI layout
+  // Add more fields as needed for AI generation
+}
+
+export async function generateDesktopAppSpecification(
+  userRequirements: string,
+): Promise<DesktopAppSpecification> {
+  // Placeholder implementation: In a real scenario, this would involve an AI model
+  // parsing the userRequirements and generating a structured specification.
+
+  console.log('Generating desktop app specification for:', userRequirements);
+
+  // For demonstration, let's assume some default values or simple parsing
+  let projectName = "MyDesktopApp";
+  let templateName: string = "Electron + React"; // Default
+  const features: string[] = [];
+  let uiDescription: string = "A simple window with a title and a button.";
+
+  if (userRequirements.toLowerCase().includes("tauri")) {
+    templateName = "Tauri + React";
+  } else if (userRequirements.toLowerCase().includes("vue")) {
+    templateName = "Electron + Vue";
+  } else if (userRequirements.toLowerCase().includes("swift") || userRequirements.toLowerCase().includes("macos")) {
+    templateName = "Native macOS (Swift)";
+  } else if (userRequirements.toLowerCase().includes("c#") || userRequirements.toLowerCase().includes("windows")) {
+    templateName = "Native Windows (C#)";
+  }
+
+  if (userRequirements.toLowerCase().includes("file handling")) {
+    features.push("file handling");
+  }
+  if (userRequirements.toLowerCase().includes("system tray")) {
+    features.push("system tray");
+  }
+  if (userRequirements.toLowerCase().includes("notifications")) {
+    features.push("notifications");
+  }
+
+  // Simple attempt to extract project name
+  const nameMatch = userRequirements.match(/project name is "([^"]+)"/i);
+  if (nameMatch && nameMatch[1]) {
+    projectName = nameMatch[1];
+  } else {
+    const firstSentence = userRequirements.split('.')[0];
+    projectName = firstSentence.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20) || "MyDesktopApp";
+  }
+
+
+  return {
+    projectName,
+    templateName,
+    features,
+    uiDescription,
+  };
+}

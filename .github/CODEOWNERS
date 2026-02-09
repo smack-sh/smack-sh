@@ -1,0 +1,30 @@
+# Code Owners for smack.sh
+# These users/teams will automatically be requested for review when files are modified
+
+# Global ownership - repository maintainers
+* @smack-sh/smack-maintainers
+
+# GitHub workflows and CI/CD configuration - require maintainer review
+/.github/ @smack-sh/smack-maintainers
+/package.json @smack-sh/smack-maintainers
+/pnpm-lock.yaml @smack-sh/smack-maintainers
+
+# Security-sensitive configurations - require maintainer review
+/.env* @smack-sh/smack-maintainers
+/wrangler.toml @smack-sh/smack-maintainers  
+/Dockerfile @smack-sh/smack-maintainers
+/docker-compose.yaml @smack-sh/smack-maintainers
+
+# Core application architecture - require maintainer review
+/app/lib/.server/ @smack-sh/smack-maintainers
+/app/routes/api.* @smack-sh/smack-maintainers
+
+# Build and deployment configuration - require maintainer review
+/vite*.config.ts @smack-sh/smack-maintainers
+/tsconfig.json @smack-sh/smack-maintainers
+/uno.config.ts @smack-sh/smack-maintainers
+/eslint.config.mjs @smack-sh/smack-maintainers
+
+# Documentation (optional review)
+/*.md
+/docs/

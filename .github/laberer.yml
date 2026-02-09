@@ -1,0 +1,84 @@
+# 🏷️ Big Creative Label List (150+)
+# Keys = label names in your repo
+# Values = regex patterns to match in title or body
+
+"priority:critical":
+  - "(?i)critical|urgent|severe"
+"priority:high":
+  - "(?i)\\bhigh priority\\b|major|important"
+"priority:medium":
+  - "(?i)medium|moderate"
+"priority:low":
+  - "(?i)low priority"
+"type:bug":
+  - "(?i)\\bbug\\b|broken|fail|error"
+"type:feature":
+  - "(?i)feature|add|new"
+"type:enhancement":
+  - "(?i)enhance|improve"
+"type:refactor":
+  - "(?i)refactor|cleanup"
+"type:documentation":
+  - "(?i)doc|documentation|readme"
+"type:test-suite":
+  - "(?i)test|unit test|integration"
+"type:design":
+  - "(?i)design|ui|ux"
+"type:performance":
+  - "(?i)performance|optimize"
+"type:security":
+  - "(?i)security|vuln|exploit"
+"status:triaged":
+  - "(?i)triaged"
+"status:in-progress":
+  - "(?i)in progress|working on it"
+"status:review-needed":
+  - "(?i)review needed"
+"status:blocked":
+  - "(?i)blocked"
+"status:completed":
+  - "(?i)done|complete"
+"good-first-issue":
+  - "(?i)first time|beginner|good first issue"
+"help-wanted":
+  - "(?i)help wanted|assist"
+"needs-testing":
+  - "(?i)needs test|test this"
+"lang:js":
+  - "\\.js\\b|JavaScript"
+"lang:ts":
+  - "\\.ts\\b|TypeScript"
+"lang:py":
+  - "\\.py\\b|Python"
+"lang:go":
+  - "\\.go\\b|Go language"
+"lang:dart":
+  - "\\.dart\\b|Flutter"
+"lang:react":
+  - "(?i)react"
+"lang:rust":
+  - "\\.rs\\b|Rust"
+"lang:cpp":
+  - "\\.cpp\\b|C\\+\\+"
+"component:auth":
+  - "(?i)auth|login|signup|oauth"
+"component:backend":
+  - "(?i)backend|server|api"
+"component:frontend":
+  - "(?i)frontend|ui|ux"
+"component:data":
+  - "(?i)data|db|database"
+"component:docs":
+  - "(?i)doc|readme"
+"vibe:cosmic-bug":
+  - "(?i)cosmic|strange|weird"
+"vibe:ux-irritation":
+  - "(?i)ux annoyance|confusing|ux issue"
+"vibe:brainstorm-worthy":
+  - "(?i)idea|brainstorm"
+"vibe:moonshot":
+  - "(?i)moonshot|big dream|ambitious"
+"risk:high":
+  - "(?i)risk|dangerous"
+"risk:external-dep":
+  - "(?i)external dependency|third party"

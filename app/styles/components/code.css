@@ -1,0 +1,7 @@
+.actions .shiki {
+  background-color: var(--smack-elements-actions-code-background) !important;
+}
+
+.shiki:not(:has(.actions), .actions *, .mcp-tool-invocation-code *) {
+  background-color: var(--smack-elements-messages-code-background) !important;
+}

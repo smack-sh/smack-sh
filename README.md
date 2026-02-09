@@ -1,6 +1,6 @@
-# Smack.sh — The best AI app builder 🚀
+# Smack.sh — The best AI app builder 🚀 
 
-> ⚠️ This platform is no longer maintained because of unstable erors cuasing this platform to be completely unusable we are working on  new project. 
+> ⚠️ This project has some bugs and some errors but please help us in our way to make this the best ai app builder ever
 
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-%5E5.0-blue)](https://www.typescriptlang.org/)

@@ -244,7 +244,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               onClick={() => props.handleFileUpload()}
             >
               <div className="i-ph:paperclip text-xl"></div>
-              {isMobileView && <span className="ml-2">Upload</span>}
+              {isMobileView ? <span className="ml-2">Upload</span> : null}
             </IconButton>
             <IconButton
               title="Enhance prompt"

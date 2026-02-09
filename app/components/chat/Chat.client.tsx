@@ -296,7 +296,6 @@ export const ChatImpl = memo(
           description: errorInfo.message,
           provider: provider.name,
           errorType,
-          retryable: errorInfo.isRetryable,
         });
         setData([]);
         if (messages[messages.length - 1]?.role === 'assistant') {
@@ -394,23 +393,24 @@ export const ChatImpl = memo(
         return;
       }
 
-      const templates = await getTemplates(activeProviders);
-      const { selectedTemplate, error: templateError } = await selectStarterTemplate(
-        messageContent,
-        templates,
+      const { template: selectedTemplateName, title } = await selectStarterTemplate({
+        message: messageContent,
         model,
         provider,
-        apiKeys,
-      );
+      });
 
-      if (templateError || !selectedTemplate) {
-        handleError(new Error(templateError || 'Failed to select template'), 'template');
+      if (!selectedTemplateName) {
+        handleError(new Error('Failed to select template'), 'template');
         return;
       }
 
       setFakeLoading(true);
-      const template = templates.find((t) => t.name === selectedTemplate);
-      const githubUrl = `https://github.com/${template?.githubRepo}`;
+      const templateMessages = await getTemplates(selectedTemplateName, title);
+
+      if (!templateMessages) {
+        handleError(new Error('Failed to load template'), 'template');
+        return;
+      }
 
       const attachments: Attachment[] = [];
 
@@ -422,23 +422,34 @@ export const ChatImpl = memo(
         });
       });
 
-      logStore.logSystem(`Selected template: ${template?.name}`, {
-        template: template?.name,
-        githubUrl,
+      logStore.logSystem(`Selected template: ${selectedTemplateName}`, {
+        template: selectedTemplateName,
+        title,
       });
 
-      const messageToSend: Message = {
+      // Send the assistant message first (template files)
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: templateMessages.assistantMessage,
+        id: generateId(),
+        createdAt: new Date(),
+      };
+
+      // Then send user's follow-up message
+      const userMsg: Message = {
         role: 'user',
-        content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\nClone ${githubUrl}\n\n${messageContent}`,
+        content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${templateMessages.userMessage}\n\n${messageContent}`,
         id: generateId(),
         createdAt: new Date(),
       };
 
       if (attachments.length > 0) {
-        messageToSend.experimental_attachments = attachments;
+        userMsg.experimental_attachments = attachments;
       }
 
-      append(messageToSend);
+      // Append both messages
+      append(assistantMsg);
+      append(userMsg);
 
       setUploadedFiles([]);
       setImageDataList([]);

@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react';
 import type { Message } from 'ai';
+import { generateId } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { useAnimate } from 'framer-motion';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -356,7 +357,96 @@ export const ChatImpl = memo(
         stop();
         return;
       }
-      // ... (rest of the function is the same)
+
+      await runAnimation();
+
+      if (chatStarted && !autoSelectTemplate) {
+        const attachments: Attachment[] = [];
+
+        imageDataList.forEach((imageData, index) => {
+          attachments.push({
+            name: uploadedFiles[index].name,
+            contentType: uploadedFiles[index].type,
+            url: imageData,
+          });
+        });
+
+        const messageToSend: Message = {
+          role: 'user',
+          content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
+          id: generateId(),
+          createdAt: new Date(),
+        };
+
+        if (attachments.length > 0) {
+          messageToSend.experimental_attachments = attachments;
+        }
+
+        append(messageToSend);
+
+        setUploadedFiles([]);
+        setImageDataList([]);
+        setInput('');
+        resetEnhancer();
+        Cookies.remove(PROMPT_COOKIE_KEY);
+        textareaRef.current?.blur();
+
+        return;
+      }
+
+      const templates = await getTemplates(activeProviders);
+      const { selectedTemplate, error: templateError } = await selectStarterTemplate(
+        messageContent,
+        templates,
+        model,
+        provider,
+        apiKeys,
+      );
+
+      if (templateError || !selectedTemplate) {
+        handleError(new Error(templateError || 'Failed to select template'), 'template');
+        return;
+      }
+
+      setFakeLoading(true);
+      const template = templates.find((t) => t.name === selectedTemplate);
+      const githubUrl = `https://github.com/${template?.githubRepo}`;
+
+      const attachments: Attachment[] = [];
+
+      imageDataList.forEach((imageData, index) => {
+        attachments.push({
+          name: uploadedFiles[index].name,
+          contentType: uploadedFiles[index].type,
+          url: imageData,
+        });
+      });
+
+      logStore.logSystem(`Selected template: ${template?.name}`, {
+        template: template?.name,
+        githubUrl,
+      });
+
+      const messageToSend: Message = {
+        role: 'user',
+        content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\nClone ${githubUrl}\n\n${messageContent}`,
+        id: generateId(),
+        createdAt: new Date(),
+      };
+
+      if (attachments.length > 0) {
+        messageToSend.experimental_attachments = attachments;
+      }
+
+      append(messageToSend);
+
+      setUploadedFiles([]);
+      setImageDataList([]);
+      setFakeLoading(false);
+      setInput('');
+      resetEnhancer();
+      Cookies.remove(PROMPT_COOKIE_KEY);
+      textareaRef.current?.blur();
     };
 
     return (

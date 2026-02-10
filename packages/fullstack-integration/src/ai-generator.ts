@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
@@ -8,12 +8,10 @@ import { createHash } from 'crypto';
  * Fullstack AI Generator - Generates complete backend applications from frontend analysis
  */
 export class FullstackAIGenerator {
-  private prisma: PrismaClient;
   private frontendModels: Map<string, any>;
   private apiEndpoints: Map<string, any>;
 
   constructor() {
-    this.prisma = new PrismaClient();
     this.frontendModels = new Map();
     this.apiEndpoints = new Map();
   }
@@ -263,15 +261,15 @@ model Session {
    */
   private mapTypeToPrisma(tsType: string): string {
     const typeMap: Record<string, string> = {
-      'string': 'String',
-      'number': 'Int',
-      'boolean': 'Boolean',
-      'Date': 'DateTime',
-      'any': 'Json',
-      'object': 'Json'
+      'string': 'string',
+      'number': 'number',
+      'boolean': 'boolean',
+      'date': 'datetime',
+      'any': 'json',
+      'object': 'json'
     };
 
-    return typeMap[tsType.toLowerCase()] || 'String';
+    return typeMap[tsType.toLowerCase()] || 'string';
   }
 
   /**
@@ -374,7 +372,7 @@ router.delete('/${lowercaseName}/:id', async (req, res, next) => {
       'string': 'string',
       'number': 'number',
       'boolean': 'boolean',
-      'Date': 'date',
+      'date': 'date',
       'any': 'any',
       'object': 'object'
     };
@@ -799,15 +797,15 @@ export function corsMiddleware(req, res, next) {
    */
   private mapTypeToSQL(tsType: string): string {
     const typeMap: Record<string, string> = {
-      'string': 'VARCHAR(255)',
-      'number': 'INTEGER',
-      'boolean': 'BOOLEAN',
-      'Date': 'TIMESTAMP WITH TIME ZONE',
-      'any': 'JSONB',
-      'object': 'JSONB'
+      'string': 'varchar(255)',
+      'number': 'integer',
+      'boolean': 'boolean',
+      'date': 'timestamp with time zone',
+      'any': 'jsonb',
+      'object': 'jsonb'
     };
 
-    return typeMap[tsType.toLowerCase()] || 'VARCHAR(255)';
+    return typeMap[tsType.toLowerCase()] || 'varchar(255)';
   }
 
   /**

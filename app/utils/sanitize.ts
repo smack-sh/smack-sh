@@ -7,15 +7,25 @@ import DOMPurify from 'dompurify';
 
 // Configure DOMPurify for server-side rendering
 let purify: typeof DOMPurify;
+let purifyInitialized = false;
 
-if (typeof window === 'undefined') {
-  // Server-side: create a JSDOM instance for DOMPurify
-  const { JSDOM } = require('jsdom');
-  const window = new JSDOM('').window;
-  purify = DOMPurify(window);
-} else {
-  // Client-side: use the browser's window
-  purify = DOMPurify;
+async function initializePurify(): Promise<typeof DOMPurify> {
+  if (purifyInitialized) {
+    return purify;
+  }
+
+  if (typeof window === 'undefined') {
+    // Server-side: create a JSDOM instance for DOMPurify
+    const { JSDOM } = await import('jsdom');
+    const window = new JSDOM('').window;
+    purify = DOMPurify(window);
+  } else {
+    // Client-side: use the browser's window
+    purify = DOMPurify;
+  }
+  
+  purifyInitialized = true;
+  return purify;
 }
 
 /**
@@ -89,13 +99,14 @@ const codeConfig = {
  * @param config - Optional custom DOMPurify configuration
  * @returns Sanitized HTML string
  */
-export function sanitizeHtml(html: string, config?: Record<string, unknown>): string {
+export async function sanitizeHtml(html: string, config?: Record<string, unknown>): Promise<string> {
   if (!html) {
     return '';
   }
 
   try {
-    return purify.sanitize(html, config || defaultConfig) as string;
+    const purifier = await initializePurify();
+    return purifier.sanitize(html, config || defaultConfig) as string;
   } catch (error) {
     console.error('Error sanitizing HTML:', error);
     // Return escaped text as fallback
@@ -108,7 +119,7 @@ export function sanitizeHtml(html: string, config?: Record<string, unknown>): st
  * @param html - The HTML content to sanitize
  * @returns Sanitized HTML string safe for code display
  */
-export function sanitizeCodeHtml(html: string): string {
+export async function sanitizeCodeHtml(html: string): Promise<string> {
   return sanitizeHtml(html, codeConfig);
 }
 
@@ -143,9 +154,9 @@ export function escapeHtml(text: string): string {
  * @param config - Optional custom DOMPurify configuration
  * @returns Object with __html property for React
  */
-export function createSanitizedHtml(html: string, config?: Record<string, unknown>): { __html: string } {
+export async function createSanitizedHtml(html: string, config?: Record<string, unknown>): Promise<{ __html: string }> {
   return {
-    __html: sanitizeHtml(html, config),
+    __html: await sanitizeHtml(html, config),
   };
 }
 
@@ -154,9 +165,9 @@ export function createSanitizedHtml(html: string, config?: Record<string, unknow
  * @param html - The HTML content to sanitize
  * @returns Object with __html property for React
  */
-export function createSanitizedCodeHtml(html: string): { __html: string } {
+export async function createSanitizedCodeHtml(html: string): Promise<{ __html: string }> {
   return {
-    __html: sanitizeCodeHtml(html),
+    __html: await sanitizeCodeHtml(html),
   };
 }
 
@@ -200,13 +211,14 @@ export function sanitizeUrl(url: string): string {
  * @param html - The HTML content
  * @returns Plain text without HTML tags
  */
-export function stripHtml(html: string): string {
+export async function stripHtml(html: string): Promise<string> {
   if (!html) {
     return '';
   }
 
   try {
-    return purify.sanitize(html, { ALLOWED_TAGS: [] }) as string;
+    const purifier = await initializePurify();
+    return purifier.sanitize(html, { ALLOWED_TAGS: [] }) as string;
   } catch (error) {
     console.error('Error stripping HTML:', error);
     return html.replace(/<[^>]*>/g, '');

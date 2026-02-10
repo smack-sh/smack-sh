@@ -10,6 +10,7 @@ import { diffFiles, extractRelativePath } from '~/utils/diff';
 import type { FileHistory } from '~/types/actions';
 import { getLanguageFromExtension } from '~/utils/getLanguageFromExtension';
 import { themeStore } from '~/lib/stores/theme';
+import { createSanitizedCodeHtml } from '~/utils/sanitize';
 
 interface CodeComparisonProps {
   beforeCode: string;
@@ -373,8 +374,8 @@ const NoChangesView = memo(
               <div className={lineContentStyles}>
                 <span className="mr-2"> </span>
                 <span
-                  dangerouslySetInnerHTML={{
-                    __html: highlighter
+                  dangerouslySetInnerHTML={createSanitizedCodeHtml(
+                    highlighter
                       ? highlighter
                           .codeToHtml(line, {
                             lang: language,
@@ -383,7 +384,7 @@ const NoChangesView = memo(
                           .replace(/<\/?pre[^>]*>/g, '')
                           .replace(/<\/?code[^>]*>/g, '')
                       : line,
-                  }}
+                  )}
                 />
               </div>
             </div>
@@ -428,7 +429,7 @@ const CodeLine = memo(
               .replace(/<\/?pre[^>]*>/g, '')
               .replace(/<\/?code[^>]*>/g, '')
           : content;
-        return <span dangerouslySetInnerHTML={{ __html: highlightedCode }} />;
+        return <span dangerouslySetInnerHTML={createSanitizedCodeHtml(highlightedCode)} />;
       }
 
       return (
@@ -446,7 +447,13 @@ const CodeLine = memo(
                   .replace(/<\/?code[^>]*>/g, '')
               : change.value;
 
-            return <span key={index} className={changeClass} dangerouslySetInnerHTML={{ __html: highlightedCode }} />;
+            return (
+              <span
+                key={index}
+                className={changeClass}
+                dangerouslySetInnerHTML={createSanitizedCodeHtml(highlightedCode)}
+              />
+            );
           })}
         </>
       );

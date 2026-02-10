@@ -1,25 +1,47 @@
 import { Pool } from 'pg';
-import { config } from 'dotenv';
+import { dbEnv } from './env.server';
 
-// Load environment variables
-config();
+/**
+ * Validates database password and throws if not set
+ * Never uses default credentials for security
+ */
+function validateDatabasePassword(password: string | undefined, dbName: string): string {
+  if (!password || password.trim() === '') {
+    throw new Error(
+      `CRITICAL SECURITY ERROR: Database password for ${dbName} is not set. ` +
+        `Application cannot start with default credentials. ` +
+        `Please set the appropriate environment variable.`,
+    );
+  }
 
-// AI Database Configuration
+  // Check for common default passwords
+  const insecurePasswords = ['postgres', 'password', '123456', 'admin', 'root', 'default'];
+  if (insecurePasswords.includes(password.toLowerCase())) {
+    throw new Error(
+      `CRITICAL SECURITY ERROR: Database password for ${dbName} appears to be a default/insecure password. ` +
+        `Please use a strong, unique password.`,
+    );
+  }
+
+  return password;
+}
+
+// AI Database Configuration - No default credentials
 export const aiPool = new Pool({
-  user: process.env.AI_DB_USER || 'postgres',
-  host: process.env.AI_DB_HOST || 'localhost',
-  database: process.env.AI_DB_NAME || 'smack_ai',
-  password: process.env.AI_DB_PASSWORD || 'postgres',
-  port: parseInt(process.env.AI_DB_PORT || '5432'),
+  user: dbEnv.ai.user,
+  host: dbEnv.ai.host,
+  database: dbEnv.ai.database,
+  password: validateDatabasePassword(dbEnv.ai.password, 'AI_DB'),
+  port: dbEnv.ai.port,
 });
 
-// Code Database Configuration
+// Code Database Configuration - No default credentials
 export const codePool = new Pool({
-  user: process.env.CODE_DB_USER || 'postgres',
-  host: process.env.CODE_DB_HOST || 'localhost',
-  database: process.env.CODE_DB_NAME || 'smack_code',
-  password: process.env.CODE_DB_PASSWORD || 'postgres',
-  port: parseInt(process.env.CODE_DB_PORT || '5433'), // Different port for the second DB
+  user: dbEnv.code.user,
+  host: dbEnv.code.host,
+  database: dbEnv.code.database,
+  password: validateDatabasePassword(dbEnv.code.password, 'CODE_DB'),
+  port: dbEnv.code.port,
 });
 
 // Test connection function

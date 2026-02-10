@@ -4,6 +4,7 @@ import { chatStore } from '~/lib/stores/chat';
 import { classNames } from '~/utils/classNames';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
 import { ChatDescription } from '~/lib/persistence/ChatDescription.client';
+import { UserButton } from '@clerk/remix';
 
 export function Header() {
   const chat = useStore(chatStore);
@@ -17,7 +18,7 @@ export function Header() {
     >
       <div className="flex items-center gap-2 z-logo text-smack-elements-textPrimary cursor-pointer">
         <div className="i-ph:sidebar-simple-duotone text-xl" />
-        <a href="/" className="text-2xl font-semibold text-accent flex items-center">
+        <a href="/chat" className="text-2xl font-semibold text-accent flex items-center">
           {/* <span className="i-smack:logo-text?mask w-[46px] inline-block" /> */}
           <img src="/logo-light-styled.png" alt="logo" className="w-[90px] inline-block dark:hidden" />
           <img src="/logo-dark-styled.png" alt="logo" className="w-[90px] inline-block hidden dark:block" />
@@ -30,12 +31,20 @@ export function Header() {
           </span>
           <ClientOnly>
             {() => (
-              <div className="">
+              <div className="flex items-center gap-3">
                 <HeaderActionButtons chatStarted={chat.started} />
+                <UserButton afterSignOutUrl="/" />
               </div>
             )}
           </ClientOnly>
         </>
+      )}
+      {!chat.started && (
+        <div className="ml-auto">
+          <ClientOnly>
+            {() => <UserButton afterSignOutUrl="/" />}
+          </ClientOnly>
+        </div>
       )}
     </header>
   );

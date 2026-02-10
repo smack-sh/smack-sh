@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react';
-import type { LinksFunction } from '@remix-run/cloudflare';
+import type { LinksFunction, LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
 import { themeStore } from './lib/stores/theme';
@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ClientOnly } from 'remix-utils/client-only';
+import { rootAuthLoader } from '@clerk/remix/ssr.server';
 
 import reactToastifyStyles from 'react-toastify/dist/ReactToastify.css?url';
 import globalStyles from './styles/index.css?url';
@@ -85,8 +86,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 import { logStore } from './lib/stores/logs';
+import { ClerkApp } from '@clerk/remix';
 
-export default function App() {
+export const loader = (args: LoaderFunctionArgs) => {
+  return rootAuthLoader(args);
+};
+
+export const meta = () => {
+  return [
+    { title: 'Smack - AI App Builder' },
+    { name: 'description', content: 'Build apps with AI assistance' }
+  ];
+};
+
+function App() {
   const theme = useStore(themeStore);
 
   useEffect(() => {
@@ -122,3 +135,5 @@ export default function App() {
     </Layout>
   );
 }
+
+export default ClerkApp(App);

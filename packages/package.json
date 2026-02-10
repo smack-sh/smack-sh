@@ -1,0 +1,25 @@
+{
+  "name": "smack-packages",
+  "version": "1.0.0",
+  "description": "AI Development Platform - React Native, Game Development, and Fullstack Integration",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run build:mobile && npm run build:game && npm run build:fullstack",
+    "build:mobile": "cd mobile-rn && npm run build",
+    "build:game": "cd game-engine && npm run build",
+    "build:fullstack": "cd fullstack-integration && npm run build",
+    "dev": "concurrently \"cd mobile-rn && npm run dev\" \"cd game-engine && npm run dev\" \"cd fullstack-integration && npm run dev\"",
+    "test": "echo \"Running integration tests...\" && node test-integration.js",
+    "clean": "rm -rf mobile-rn/dist game-engine/dist fullstack-integration/dist",
+    "install:all": "npm install && cd mobile-rn && npm install && cd ../game-engine && npm install && cd ../fullstack-integration && npm install"
+  },
+  "workspaces": [
+    "mobile-rn",
+    "game-engine",
+    "fullstack-integration"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { classNames } from '~/utils/classNames';
 import { useGitLabConnection } from '~/lib/hooks';
+import { createScopedLogger } from '~/utils/logger';
+
+const logger = createScopedLogger('GitLabAuthDialog');
 
 interface GitLabAuthDialogProps {
   isOpen: boolean;
@@ -19,23 +22,47 @@ export function GitLabAuthDialog({ isOpen, onClose }: GitLabAuthDialogProps) {
     event.preventDefault();
 
     if (!token.trim()) {
+      logger.warn('Connect attempt with empty token');
       toast.error('Please enter your GitLab access token');
       return;
     }
 
+    // Validate GitLab URL format
     try {
+      new URL(gitlabUrl);
+    } catch {
+      logger.warn('Invalid GitLab URL format:', gitlabUrl);
+      toast.error('Please enter a valid GitLab URL (e.g., https://gitlab.com)');
+      return;
+    }
+
+    try {
+      logger.info('Connecting to GitLab:', { url: gitlabUrl, hasToken: !!token });
       await connect(token, gitlabUrl);
+      logger.info('Successfully connected to GitLab');
       toast.success('Successfully connected to GitLab!');
       setToken('');
       onClose();
-    } catch (error) {
-      // Error handling is done in the hook
-      console.error('GitLab connect failed:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect to GitLab';
+      logger.error('GitLab connect failed:', err);
+      toast.error(`Connection failed: ${errorMessage}`);
+    }
+  };
+
+  const handleClose = async () => {
+    try {
+      logger.info('Closing GitLab auth dialog');
+      onClose();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to close dialog';
+      logger.error('Error closing dialog:', err);
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000]" />
         <div className="fixed inset-0 flex items-center justify-center z-[10000]">
@@ -144,7 +171,7 @@ export function GitLabAuthDialog({ isOpen, onClose }: GitLabAuthDialogProps) {
                 <div className="flex justify-end gap-2 pt-2">
                   <motion.button
                     type="button"
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="px-4 py-2 rounded-lg bg-smack-elements-background-depth-2 dark:bg-smack-elements-background-depth-3 text-smack-elements-textSecondary dark:text-smack-elements-textSecondary-dark hover:bg-smack-elements-background-depth-3 dark:hover:bg-smack-elements-background-depth-4 text-sm border border-smack-elements-borderColor dark:border-smack-elements-borderColor-dark"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

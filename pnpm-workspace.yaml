@@ -1,0 +1,3 @@
+packages:
+  - 'packages/*'
+  - 'image-search-engine'

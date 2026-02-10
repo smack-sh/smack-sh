@@ -3,6 +3,78 @@ import { createScopedLogger } from '~/utils/logger';
 const logger = createScopedLogger('PythonUsageTracker');
 
 /**
+ * Storage interface for compatibility between server and client
+ */
+interface StorageInterface {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+/**
+ * Client-side storage implementation
+ */
+class ClientStorage implements StorageInterface {
+  getItem(key: string): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(key);
+    }
+    return null;
+  }
+
+  setItem(key: string, value: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  }
+
+  removeItem(key: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+/**
+ * Server-side in-memory storage implementation
+ */
+class ServerStorage implements StorageInterface {
+  private storage = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.storage.get(key) || null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.storage.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.storage.delete(key);
+  }
+}
+
+/**
+ * Storage factory - creates appropriate storage based on environment
+ */
+function createStorage(): StorageInterface {
+  if (typeof window !== 'undefined') {
+    return new ClientStorage();
+  }
+  return new ServerStorage();
+}
+
+// Global storage instance
+let storageInstance: StorageInterface | null = null;
+
+function getStorage(): StorageInterface {
+  if (!storageInstance) {
+    storageInstance = createStorage();
+  }
+  return storageInstance;
+}
+
+/**
  * Usage tracking configuration
  */
 const USAGE_CONFIG = {
@@ -91,7 +163,7 @@ export function checkRateLimit(userId: string): RateLimitResult {
   try {
     // Get existing rate limit data
     const rateLimitKey = getRateLimitKey(userId);
-    const stored = localStorage.getItem(rateLimitKey);
+    const stored = getStorage().getItem(rateLimitKey);
     let rateLimitData: RateLimitData;
 
     if (stored) {
@@ -146,7 +218,7 @@ export function recordRequest(userId: string): void {
 
   try {
     const rateLimitKey = getRateLimitKey(userId);
-    const stored = localStorage.getItem(rateLimitKey);
+    const stored = getStorage().getItem(rateLimitKey);
     let rateLimitData: RateLimitData;
 
     if (stored) {
@@ -167,7 +239,7 @@ export function recordRequest(userId: string): void {
     rateLimitData.requests = rateLimitData.requests.filter((timestamp) => timestamp > windowStart);
 
     // Save updated data
-    localStorage.setItem(rateLimitKey, JSON.stringify(rateLimitData));
+    getStorage().setItem(rateLimitKey, JSON.stringify(rateLimitData));
 
     logger.debug(`Recorded request for user ${userId}. Current count: ${rateLimitData.requests.length}`);
   } catch (error) {
@@ -183,7 +255,7 @@ export function trackUsage(userId: string, executionTime: number, success: boole
 
   try {
     const usageKey = getUsageKey(userId);
-    const stored = localStorage.getItem(usageKey);
+    const stored = getStorage().getItem(usageKey);
     let usage: UserUsage;
 
     if (stored) {
@@ -213,7 +285,7 @@ export function trackUsage(userId: string, executionTime: number, success: boole
     usage.executionTimeTotal += executionTime;
     usage.lastRequestTime = Date.now();
 
-    localStorage.setItem(usageKey, JSON.stringify(usage));
+    getStorage().setItem(usageKey, JSON.stringify(usage));
 
     // Also store analytics
     updateAnalytics(success, executionTime);
@@ -230,7 +302,7 @@ export function trackUsage(userId: string, executionTime: number, success: boole
 export function getTodayUsage(userId: string): UserUsage | null {
   try {
     const usageKey = getUsageKey(userId);
-    const stored = localStorage.getItem(usageKey);
+    const stored = getStorage().getItem(usageKey);
 
     if (!stored) {
       return null;
@@ -282,7 +354,7 @@ export function getRemainingQuota(userId: string): number {
 function updateAnalytics(success: boolean, executionTime: number): void {
   try {
     const analyticsKey = 'python_analytics';
-    const stored = localStorage.getItem(analyticsKey);
+    const stored = getStorage().getItem(analyticsKey);
     let analytics: Partial<UsageAnalytics>;
 
     if (stored) {
@@ -309,7 +381,7 @@ function updateAnalytics(success: boolean, executionTime: number): void {
     const totalRequests = analytics.totalRequests;
     analytics.averageExecutionTime = (currentAvg * (totalRequests - 1) + executionTime) / totalRequests;
 
-    localStorage.setItem(analyticsKey, JSON.stringify(analytics));
+    getStorage().setItem(analyticsKey, JSON.stringify(analytics));
   } catch (error) {
     logger.error('Error updating analytics:', error);
   }
@@ -321,7 +393,7 @@ function updateAnalytics(success: boolean, executionTime: number): void {
 export function getAnalytics(): UsageAnalytics | null {
   try {
     const analyticsKey = 'python_analytics';
-    const stored = localStorage.getItem(analyticsKey);
+    const stored = getStorage().getItem(analyticsKey);
 
     if (!stored) {
       return null;
@@ -342,8 +414,8 @@ export function resetUsage(userId: string): void {
     const usageKey = getUsageKey(userId);
     const rateLimitKey = getRateLimitKey(userId);
 
-    localStorage.removeItem(usageKey);
-    localStorage.removeItem(rateLimitKey);
+    getStorage().removeItem(usageKey);
+    getStorage().removeItem(rateLimitKey);
 
     logger.info(`Reset usage data for user ${userId}`);
   } catch (error) {

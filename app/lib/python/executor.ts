@@ -188,11 +188,17 @@ def _secure_import(name, *args, **kwargs):
 # Replace __import__ with secure version
 builtins.__import__ = _secure_import
 
+# Create blocker factory function
+def _create_blocker(func_name):
+    def blocker(*args, **kwargs):
+        raise PermissionError(f"Function '{func_name}' is blocked for security reasons")
+    return blocker
+
 # Block eval, exec, and compile
 _blocked_functions = ['eval', 'exec', 'compile', '__import__']
 for func_name in _blocked_functions:
     if hasattr(builtins, func_name):
-        setattr(builtins, func_name, lambda *args, **kwargs: PermissionError(f"Function '{func_name}' is blocked for security reasons"))
+        setattr(builtins, func_name, _create_blocker(func_name))
 
 # Limit sys.path to prevent importing from arbitrary locations
 sys.path = [p for p in sys.path if p == '' or '/lib/python' in p or 'site-packages' in p]
@@ -341,28 +347,28 @@ export async function executePython(
     pyodide.setStdout({ batched: (text: string) => output.push(text) });
     pyodide.setStderr({ batched: (text: string) => output.push(`[stderr] ${text}`) });
 
-    // Wrap code with timeout mechanism
-    const wrappedCode = `
-import signal
-import sys
+    // Execute the code with timeout
+    let timeoutHandle: NodeJS.Timeout | null = null;
+    let executionFinished = false;
 
-class TimeoutError(Exception):
-    pass
-
-def _timeout_handler(signum, frame):
-    raise TimeoutError("Code execution timed out")
-
-# Set up timeout
-# Note: signal module may not work in all WebAssembly environments
-# This is a best-effort approach
-
-# Execute user code
-${code}
-`;
-
-    // Execute the code
     try {
-      pyodide.runPython(wrappedCode);
+      const timeout = options.timeout || EXECUTION_CONFIG.TIMEOUT_MS;
+      
+      // Set up JS-side timeout using pyodide.interrupt
+      timeoutHandle = setTimeout(() => {
+        if (!executionFinished) {
+          try {
+            pyodide.interrupt();
+          } catch (interruptError) {
+            logger.warn('Failed to interrupt Pyodide execution:', interruptError);
+          }
+        }
+      }, timeout);
+
+      // Execute the code directly
+      pyodide.runPython(code);
+      executionFinished = true;
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -371,7 +377,16 @@ ${code}
         throw new Error(`Security violation: ${errorMessage}`);
       }
 
+      // Check for timeout errors
+      if (errorMessage.includes('KeyboardInterrupt') || errorMessage.includes('Execution interrupted')) {
+        throw new Error(`Code execution timed out after ${options.timeout || EXECUTION_CONFIG.TIMEOUT_MS}ms`);
+      }
+
       throw error;
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
     }
 
     const executionTime = Date.now() - startTime;

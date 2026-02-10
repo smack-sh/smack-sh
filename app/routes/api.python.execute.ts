@@ -9,7 +9,6 @@ import {
   getUsageConfig,
 } from '~/lib/python/usage-tracker';
 import { createScopedLogger } from '~/utils/logger';
-import { sanitizeHtml } from '~/utils/sanitize';
 
 const logger = createScopedLogger('api.python.execute');
 
@@ -78,13 +77,14 @@ function validateRequest(body: unknown): { valid: boolean; error?: string; data?
     return { valid: false, error: `Code size exceeds maximum of ${MAX_CODE_SIZE / 1024}KB` };
   }
 
-  // Sanitize code input (basic HTML sanitization to prevent XSS in output)
-  const sanitizedCode = sanitizeHtml(code);
+  // Keep raw Python code - no HTML sanitization needed
+  // The code will be executed in a secure sandbox environment
+  const rawCode = code;
 
   return {
     valid: true,
     data: {
-      code: sanitizedCode,
+      code: rawCode,
       options,
     },
   };

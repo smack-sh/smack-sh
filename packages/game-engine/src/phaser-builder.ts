@@ -1,13 +1,13 @@
-import { GameConfig, Scene, GameObjects, Physics } from 'phaser';
+import * as Phaser from 'phaser';
 
 /**
  * Phaser Game Builder - AI-powered game development
  */
 export class PhaserGameBuilder {
-  private gameConfig: GameConfig;
-  private scenes: Scene[];
+  private gameConfig: Phaser.Types.Core.GameConfig;
+  private scenes: Phaser.Scene[];
   private assets: Map<string, string>;
-  private currentScene: Scene | null;
+  private currentScene: Phaser.Scene | null;
 
   constructor() {
     this.scenes = [];

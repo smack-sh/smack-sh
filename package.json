@@ -45,10 +45,6 @@
   "engines": {
     "node": ">=18.18.0"
   },
-  "workspaces": [
-    "packages/*",
-    "image-search-engine"
-  ],
   "dependencies": {
     "@ai-sdk/google": "0.0.52",
     "@ai-sdk/openai": "^1.0.0",

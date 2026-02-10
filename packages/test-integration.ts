@@ -154,7 +154,7 @@ fetch('/api/scores', { method: 'POST', body: JSON.stringify(scoreData) });
 `;
 
   fullstackGenerator.analyzeFrontendCode(gameFrontendCode);
-  const gameBackend = fullstackGenerator.generateBackendApp('GameBackend', './game-server');
+  const gameBackend = await fullstackGenerator.generateBackendApp('GameBackend', './game-server');
   console.log('✅ Game backend generated\n');
 
   // Test 5: Complete application generation

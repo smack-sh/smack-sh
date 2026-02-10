@@ -244,7 +244,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               onClick={() => props.handleFileUpload()}
             >
               <div className="i-ph:paperclip text-xl"></div>
-              {isMobileView && <span className="ml-2">Upload</span>}
+              {isMobileView ? <span className="ml-2">Upload</span> : null}
             </IconButton>
             <IconButton
               title="Enhance prompt"
@@ -285,20 +285,6 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
                 {props.chatMode === 'discuss' ? <span>Discuss</span> : <span />}
               </IconButton>
             )}
-            <IconButton
-              title="Model Settings"
-              className={classNames('transition-all flex items-center gap-1', {
-                'bg-smack-elements-item-backgroundAccent text-smack-elements-item-contentAccent':
-                  props.isModelSettingsCollapsed,
-                'bg-smack-elements-item-backgroundDefault text-smack-elements-item-contentDefault':
-                  !props.isModelSettingsCollapsed,
-              })}
-              onClick={() => props.setIsModelSettingsCollapsed(!props.isModelSettingsCollapsed)}
-              disabled={!props.providerList || props.providerList.length === 0}
-            >
-              <div className={`i-ph:caret-${props.isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
-              {props.isModelSettingsCollapsed ? <span className="text-xs">{props.model}</span> : <span />}
-            </IconButton>
           </div>
           {props.input.length > 3 ? (
             <div className="text-xs text-smack-elements-textTertiary">

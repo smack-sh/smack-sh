@@ -110,48 +110,68 @@ export class WebAuthnService {
     previousSignCount: number,
   ) {
     try {
-      if (!credential.response.authenticatorData || !credential.response.signature) {
+      const parsed = this._parseAndValidateCredential(
+        credential,
+        expectedChallenge,
+        expectedOrigin,
+        expectedRpId,
+        previousSignCount,
+      );
+
+      if (!parsed) {
         return { verified: false as const };
       }
 
-      const { buffer: clientDataJsonBuffer, parsed: clientData } = parseClientData(credential.response.clientDataJSON);
+      const { authData, clientDataJsonBuffer, newSignCount, signature } = parsed;
+      const verified = verifyAssertionSignature(authData, clientDataJsonBuffer, signature, credentialPublicKeyPem);
 
-      if (!isClientDataValid(clientData, expectedChallenge, expectedOrigin)) {
-        return { verified: false as const };
-      }
-
-      const authData = parseAuthenticatorData(credential.response.authenticatorData);
-
-      if (!authData) {
-        return { verified: false as const };
-      }
-
-      if (!verifyRpIdHash(authData, expectedRpId)) {
-        return { verified: false as const };
-      }
-
-      const flags = authData.readUInt8(32);
-
-      if (!hasRequiredFlags(flags)) {
-        return { verified: false as const };
-      }
-
-      const newSignCount = authData.readUInt32BE(33);
-
-      if (newSignCount <= previousSignCount) {
-        return { verified: false as const };
-      }
-
-      if (
-        !verifyAssertionSignature(authData, clientDataJsonBuffer, credential.response.signature, credentialPublicKeyPem)
-      ) {
-        return { verified: false as const };
-      }
-
-      return { verified: true as const, newSignCount };
+      return verified ? { verified: true as const, newSignCount } : { verified: false as const };
     } catch (error) {
       console.error('WebAuthn verification failed:', error);
       return { verified: false as const };
     }
+  }
+
+  private _parseAndValidateCredential(
+    credential: PublicKeyCredentialJSON,
+    expectedChallenge: string,
+    expectedOrigin: string,
+    expectedRpId: string,
+    previousSignCount: number,
+  ) {
+    if (!credential.response.authenticatorData || !credential.response.signature) {
+      return null;
+    }
+
+    const { buffer: clientDataJsonBuffer, parsed: clientData } = parseClientData(credential.response.clientDataJSON);
+
+    if (!isClientDataValid(clientData, expectedChallenge, expectedOrigin)) {
+      return null;
+    }
+
+    const authData = parseAuthenticatorData(credential.response.authenticatorData);
+
+    if (!authData || !verifyRpIdHash(authData, expectedRpId)) {
+      return null;
+    }
+
+    const flags = authData.readUInt8(32);
+
+    if (!hasRequiredFlags(flags)) {
+      return null;
+    }
+
+    const newSignCount = authData.readUInt32BE(33);
+
+    if (newSignCount <= previousSignCount) {
+      return null;
+    }
+
+    return {
+      authData,
+      clientDataJsonBuffer,
+      newSignCount,
+      signature: credential.response.signature,
+    };
   }
 }

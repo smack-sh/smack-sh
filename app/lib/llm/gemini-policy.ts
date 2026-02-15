@@ -1,6 +1,6 @@
 export const GEMINI_PROVIDER_NAME = 'Google';
 
-const FALLBACK_GEMINI_MODEL = 'gemini-2.0-flash';
+const FALLBACK_GEMINI_MODEL = 'gemini-3.0-flash';
 
 function isGeminiModel(value?: string): value is string {
   if (!value) {

@@ -1,4 +1,4 @@
-const DEFAULT_GEMINI_MODEL = process.env.DEFAULT_MODEL || 'gemini-2.0-flash';
+const DEFAULT_GEMINI_MODEL = process.env.DEFAULT_MODEL || 'gemini-3.0-flash';
 
 type GeminiGenerateArgs = {
   systemPrompt: string;
@@ -48,19 +48,24 @@ export async function generateGeminiText(args: GeminiGenerateArgs): Promise<stri
 }
 
 function buildGeminiRequestBody(args: GeminiGenerateArgs): string {
-  const temperature = typeof args.temperature === 'number' ? args.temperature : 0.2;
-  const systemPrompt = JSON.stringify(args.systemPrompt);
-  const userPrompt = JSON.stringify(args.userPrompt);
+  const temperature = args.temperature ?? 0.2;
+  const payload = {
+    systemInstruction: {
+      parts: [{ text: args.systemPrompt }],
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: args.userPrompt }],
+      },
+    ],
+    generationConfig: {
+      temperature,
+      maxOutputTokens: 4096,
+    },
+  };
 
-  return (
-    '{"systemInstruction":{"parts":[{"text":' +
-    systemPrompt +
-    '}]},"contents":[{"role":"user","parts":[{"text":' +
-    userPrompt +
-    '}]}],"generationConfig":{"temperature":' +
-    String(temperature) +
-    ',"maxOutputTokens":4096}}'
-  );
+  return JSON.stringify(payload);
 }
 
 function extractCandidateText(payload: GeminiGenerateResponse): string | null {

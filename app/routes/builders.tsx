@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 type BuilderTab = 'desktop' | 'flutter' | 'react-native' | 'game';
+type BuilderRunMode = 'generate' | 'build';
 
 function getBuilderEndpoint(tab: BuilderTab): string {
   const endpointMap: Record<BuilderTab, string> = {
@@ -13,34 +14,32 @@ function getBuilderEndpoint(tab: BuilderTab): string {
   return endpointMap[tab];
 }
 
-function getBuilderBody(tab: BuilderTab, runMode: 'generate' | 'build', prompt: string, promptSnippet: string): string {
-  const promptJson = JSON.stringify(prompt);
-  const snippetJson = JSON.stringify(promptSnippet);
+function getBuilderBody(tab: BuilderTab, runMode: BuilderRunMode, prompt: string, promptSnippet: string): string {
+  const builders: Record<BuilderTab, Record<BuilderRunMode, () => string>> = {
+    desktop: {
+      build: () => '{"mode":"build","projectRoot":"."}',
+      generate: () => '{"mode":"generate","prompt":' + JSON.stringify(prompt) + ',"template":"productivity-timer"}',
+    },
+    flutter: {
+      build: () => '{"mode":"build-apk","projectId":"flutter-demo","projectRoot":"."}',
+      generate: () => '{"mode":"generate","prompt":' + JSON.stringify(prompt) + '}',
+    },
+    'react-native': {
+      build: () => '{"mode":"build-eas","projectRoot":"."}',
+      generate: () => '{"mode":"convert","webCode":' + JSON.stringify(promptSnippet) + '}',
+    },
+    game: {
+      build: () => '{"prompt":' + JSON.stringify(prompt) + '}',
+      generate: () => '{"prompt":' + JSON.stringify(prompt) + '}',
+    },
+  };
 
-  if (tab === 'desktop') {
-    return runMode === 'build'
-      ? '{"mode":"build","projectRoot":"."}'
-      : '{"mode":"generate","prompt":' + promptJson + ',"template":"productivity-timer"}';
-  }
-
-  if (tab === 'flutter') {
-    return runMode === 'build'
-      ? '{"mode":"build-apk","projectId":"flutter-demo","projectRoot":"."}'
-      : '{"mode":"generate","prompt":' + promptJson + '}';
-  }
-
-  if (tab === 'react-native') {
-    return runMode === 'build'
-      ? '{"mode":"build-eas","projectRoot":"."}'
-      : '{"mode":"convert","webCode":' + snippetJson + '}';
-  }
-
-  return '{"prompt":' + promptJson + '}';
+  return builders[tab][runMode]();
 }
 
 export default function BuildersPage() {
   const [tab, setTab] = useState<BuilderTab>('desktop');
-  const [runMode, setRunMode] = useState<'generate' | 'build'>('generate');
+  const [runMode, setRunMode] = useState<BuilderRunMode>('generate');
   const [prompt, setPrompt] = useState('Build a productivity timer with reports and reminders');
   const [output, setOutput] = useState('// Output will appear here');
   const [loading, setLoading] = useState(false);

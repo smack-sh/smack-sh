@@ -2,10 +2,8 @@ import { BaseProvider } from '~/lib/modules/llm/base-provider';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
 import type { LanguageModelV1 } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { serverManager } from '~/lib/modules/smack/server-manager.server';
-import { requestManager } from '~/lib/modules/smack/request-manager';
 
 export default class GoogleProvider extends BaseProvider {
   name = 'Google';
@@ -14,8 +12,6 @@ export default class GoogleProvider extends BaseProvider {
   config = {
     apiTokenKey: 'GOOGLE_GENERATIVE_AI_API_KEY',
   };
-
-  private smackServerUrl = 'http://127.0.0.1:8001';
 
   async checkSmackServerHealth(): Promise<boolean> {
     try {
@@ -150,7 +146,7 @@ export default class GoogleProvider extends BaseProvider {
                 contextWindow = 2000000; // Gemini 1.5 Pro has 2M context
               } else if (modelName.includes('gemini-1.5-flash')) {
                 contextWindow = 1000000; // Gemini 1.5 Flash has 1M context
-              } else if (modelName.includes('gemini-2.0-flash')) {
+              } else if (modelName.includes('gemini-3.0-flash')) {
                 contextWindow = 1000000; // Gemini 2.0 Flash has 1M context
               } else if (modelName.includes('gemini-pro')) {
                 contextWindow = 32000; // Gemini Pro has 32k context
@@ -220,7 +216,9 @@ export default class GoogleProvider extends BaseProvider {
       throw new Error(`Missing API key for ${this.name} provider`);
     }
 
-    const google = createGoogleGenerativeAI({
+    const google = createOpenAI({
+      compatibility: 'strict',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
       apiKey,
     });
 

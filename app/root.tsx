@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ClientOnly } from 'remix-utils/client-only';
+import { hasConfiguredClerkKey, normalizeClerkKey } from './utils/clerk-key';
 
 import reactToastifyStyles from 'react-toastify/dist/ReactToastify.css?url';
 import globalStyles from './styles/index.css?url';
@@ -90,22 +91,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 import { logStore } from './lib/stores/logs';
 
-const clerkPublishableKey =
-  process.env.CLERK_PUBLISHABLE_KEY ||
-  process.env.VITE_CLERK_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-function hasConfiguredClerkKey(key?: string): key is string {
-  if (!key || key.includes('your_clerk_publishable_key')) {
-    return false;
-  }
-
-  const normalized = key.trim().replace(/^['"]|['"]$/g, '');
-
-  return /^pk_(test|live)_/.test(normalized);
+function resolveClerkPublishableKey() {
+  return normalizeClerkKey(
+    process.env.CLERK_PUBLISHABLE_KEY ||
+      process.env.VITE_CLERK_PUBLISHABLE_KEY ||
+      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  );
 }
 
 export async function loader(args: LoaderFunctionArgs) {
+  const clerkPublishableKey = resolveClerkPublishableKey();
+
   if (!hasConfiguredClerkKey(clerkPublishableKey)) {
     return json({ clerkReady: false });
   }
@@ -154,9 +150,11 @@ function App() {
   );
 }
 
-const WrappedApp = hasConfiguredClerkKey(clerkPublishableKey)
+const resolvedClerkPublishableKey = resolveClerkPublishableKey();
+
+const WrappedApp = hasConfiguredClerkKey(resolvedClerkPublishableKey)
   ? ClerkApp(App, {
-      publishableKey: clerkPublishableKey,
+      publishableKey: resolvedClerkPublishableKey,
       signInUrl: '/sign-in',
       signUpUrl: '/sign-up',
     })

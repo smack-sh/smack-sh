@@ -146,10 +146,26 @@ export const ChatImpl = memo(
     const [retryCount, setRetryCount] = useState(0);
     const MAX_RETRIES = 3;
     const STREAM_TIMEOUT = 30000; // 30 seconds
+    const retryCountRef = useRef(0);
+    const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const retryScheduledRef = useRef(false);
     const [isLastMessagePartial, setIsLastMessagePartial] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'stable' | 'unstable' | 'recovering'>('stable');
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
     const [showAuthPrompt, setShowAuthPrompt] = useState<boolean>(false);
+
+    const clearRetryState = useCallback(() => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+
+      retryScheduledRef.current = false;
+    }, []);
+
+    useEffect(() => {
+      retryCountRef.current = retryCount;
+    }, [retryCount]);
 
     const {
       messages,
@@ -190,6 +206,7 @@ export const ChatImpl = memo(
         handleError(e, 'chat');
       },
       onFinish: (message, response) => {
+        clearRetryState();
         const usage = response.usage;
         setData(undefined);
         setRetryCount(0);
@@ -232,32 +249,36 @@ export const ChatImpl = memo(
       };
     }, [isLoading, messages]);
 
-    useEffect(() => {
-      let active = true;
-
-      const loadAuthStatus = async () => {
-        try {
-          const response = await fetch('/api/auth/status');
-          const data = (await response.json()) as { authenticated?: boolean };
-
-          if (active) {
-            setIsAuthenticated(Boolean(data.authenticated));
-          }
-        } catch (error) {
-          console.error('Failed to load auth status:', error);
-
-          if (active) {
-            setIsAuthenticated(false);
-          }
-        }
-      };
-
-      loadAuthStatus();
-
-      return () => {
-        active = false;
-      };
+    const refreshAuthStatus = useCallback(async (): Promise<boolean | null> => {
+      try {
+        const response = await fetch('/api/auth/status', { credentials: 'include' });
+        const data = (await response.json()) as { authenticated?: boolean };
+        const authenticated = Boolean(data.authenticated);
+        setIsAuthenticated(authenticated);
+        return authenticated;
+      } catch (error) {
+        console.error('Failed to load auth status:', error);
+        setIsAuthenticated(null);
+        return null;
+      }
     }, []);
+
+    useEffect(() => {
+      refreshAuthStatus().catch((error) => {
+        console.error('Initial auth status check failed:', error);
+      });
+    }, [refreshAuthStatus]);
+
+    useEffect(() => {
+      const onFocus = () => {
+        refreshAuthStatus().catch((error) => {
+          console.error('Auth refresh on focus failed:', error);
+        });
+      };
+
+      window.addEventListener('focus', onFocus);
+      return () => window.removeEventListener('focus', onFocus);
+    }, [refreshAuthStatus]);
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {
@@ -280,14 +301,21 @@ export const ChatImpl = memo(
           errorInfo.message = error.message;
         }
 
-        if (errorInfo.isRetryable && retryCount < MAX_RETRIES) {
-          const delay = Math.pow(2, retryCount) * 1000;
+        if (errorInfo.isRetryable && retryCountRef.current < MAX_RETRIES) {
+          if (retryScheduledRef.current) {
+            return;
+          }
+
+          retryScheduledRef.current = true;
+          const delay = Math.pow(2, retryCountRef.current) * 1000;
           setConnectionStatus('recovering');
-          toast.info(`Connection issue. Retrying in ${delay / 1000}s... (Attempt ${retryCount + 1})`);
-          setTimeout(() => {
-            setRetryCount(retryCount + 1);
+          toast.info(`Connection issue. Retrying in ${delay / 1000}s... (Attempt ${retryCountRef.current + 1})`);
+          retryTimeoutRef.current = setTimeout(() => {
+            retryScheduledRef.current = false;
+            setRetryCount((previousCount) => previousCount + 1);
             reload();
           }, delay);
+
           return;
         }
 
@@ -331,8 +359,9 @@ export const ChatImpl = memo(
           setIsLastMessagePartial(true);
         }
         setRetryCount(0);
+        clearRetryState();
       },
-      [provider.name, stop, retryCount, messages],
+      [provider.name, stop, messages, reload, clearRetryState],
     );
 
     const clearApiErrorAlert = useCallback(() => {
@@ -379,6 +408,7 @@ export const ChatImpl = memo(
     };
 
     const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
+      clearRetryState();
       const messageContent = messageInput || input;
       const hasText = Boolean(messageContent?.trim());
       const hasImages = uploadedFiles.length > 0;
@@ -388,13 +418,20 @@ export const ChatImpl = memo(
       }
 
       if (isLoading) {
+        clearRetryState();
         stop();
         return;
       }
 
-      if (!isAuthenticated) {
-        setShowAuthPrompt(true);
-        return;
+      if (isAuthenticated === false) {
+        const authenticated = await refreshAuthStatus();
+
+        if (authenticated) {
+          setShowAuthPrompt(false);
+        } else if (authenticated === false) {
+          setShowAuthPrompt(true);
+          return;
+        }
       }
 
       await runAnimation();
@@ -411,6 +448,12 @@ export const ChatImpl = memo(
       setImageDataList([]);
       Cookies.remove(PROMPT_COOKIE_KEY);
     };
+
+    useEffect(() => {
+      return () => {
+        clearRetryState();
+      };
+    }, [clearRetryState]);
 
     return (
       <BaseChat
@@ -434,7 +477,10 @@ export const ChatImpl = memo(
         }}
         providerList={[DEFAULT_PROVIDER as ProviderInfo]}
         handleInputChange={handleInputChange}
-        handleStop={stop}
+        handleStop={() => {
+          clearRetryState();
+          stop();
+        }}
         description={description}
         importChat={importChat}
         exportChat={exportChat}
@@ -467,6 +513,7 @@ export const ChatImpl = memo(
         clearLlmErrorAlert={clearApiErrorAlert}
         onRetry={() => {
           clearApiErrorAlert();
+          clearRetryState();
           reload();
         }}
         data={chatData}

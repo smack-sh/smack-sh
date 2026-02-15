@@ -1,7 +1,7 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { generateId, type ToolSet, type TextStreamPart } from 'ai';
 import { formatDataStreamPart } from '@ai-sdk/ui-utils';
-import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS, type FileMap } from '~/lib/llm/constants';
+import { MAX_RESPONSE_SEGMENTS, type FileMap } from '~/lib/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
@@ -14,6 +14,7 @@ import { createSummary } from '~/lib/.server/llm/create-summary';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 import type { DesignScheme } from '~/types/design-scheme';
 import { MCPService } from '~/lib/services/mcpService';
+import { generateGeminiText } from '~/lib/builders/gemini.server';
 
 type DataStreamWriterCompat = {
   write: (chunk: string) => void;
@@ -64,7 +65,11 @@ function createDataStreamCompat({
 }
 
 async function mergeResultIntoDataStream(
-  result: { fullStream: AsyncIterable<TextStreamPart<ToolSet>>; finishReason: Promise<string>; totalUsage: Promise<any> },
+  result: {
+    fullStream: AsyncIterable<TextStreamPart<ToolSet>>;
+    finishReason: Promise<string>;
+    totalUsage: Promise<any>;
+  },
   writer: DataStreamWriterCompat,
 ) {
   for await (const part of result.fullStream) {
@@ -143,7 +148,6 @@ async function mergeResultIntoDataStream(
   );
 }
 
-
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
 }
@@ -152,6 +156,7 @@ const logger = createScopedLogger('api.chat');
 
 function parseCookies(cookieHeader: string): Record<string, string> {
   const cookies: Record<string, string> = {};
+
   if (!cookieHeader) {
     return cookies;
   }
@@ -160,6 +165,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 
   items.forEach((item) => {
     const [name, ...rest] = item.split('=');
+
     if (name && rest.length) {
       try {
         const decodedName = decodeURIComponent(name.trim());
@@ -174,9 +180,17 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   return cookies;
 }
 
-async function chatAction({ context, request }: ActionFunctionArgs) {
-  
+function getLastUserPrompt(messages: Messages): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user' && typeof messages[i].content === 'string') {
+      return messages[i].content;
+    }
+  }
 
+  return '';
+}
+
+async function chatAction({ context, request }: ActionFunctionArgs) {
   try {
     const body = await request.json<{
       messages: Messages;
@@ -220,6 +234,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     const cookies = parseCookies(cookieHeader || '');
 
     let apiKeys = {};
+
     try {
       if (cookies.apiKeys) {
         apiKeys = JSON.parse(cookies.apiKeys);
@@ -229,6 +244,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     }
 
     let providerSettings: Record<string, IProviderSetting> = {};
+
     try {
       if (cookies.providers) {
         providerSettings = JSON.parse(cookies.providers);
@@ -248,8 +264,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
     const dataStream = createDataStreamCompat({
       async execute(dataStream) {
-        
-
         const mcpService = MCPService.getInstance();
         const filePaths = getFilePaths(files || {});
         let filteredFiles: FileMap | undefined = undefined;
@@ -330,9 +344,11 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
               type: 'codeContext',
               files: Object.keys(filteredFiles || {}).map((key) => {
                 let path = key;
+
                 if (path.startsWith(WORK_DIR)) {
                   path = path.replace(WORK_DIR, '');
                 }
+
                 return path;
               }),
             } as ContextAnnotation);
@@ -375,6 +391,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
                 message: 'Response Generated',
               } satisfies ProgressAnnotation);
               await new Promise((resolve) => setTimeout(resolve, 0));
+
               return;
             }
 
@@ -383,9 +400,11 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             }
 
             const lastUserMessage = processedMessages.filter((x) => x.role === 'user').slice(-1)[0];
+
             if (!lastUserMessage) {
               throw new Error('Cannot continue: No user message found to extract properties from.');
             }
+
             const { model, provider } = extractPropertiesFromMessage(lastUserMessage);
             processedMessages.push({ id: generateId(), role: 'assistant', content });
             processedMessages.push({
@@ -422,31 +441,67 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           message: 'Generating Response',
         } satisfies ProgressAnnotation);
 
-        const result = await streamText({
-          messages: [...processedMessages],
-          env: context.cloudflare?.env,
-          options,
-          apiKeys,
-          files,
-          providerSettings,
-          promptId,
-          contextOptimization,
-          contextFiles: filteredFiles,
-          chatMode,
-          designScheme,
-          summary,
-          messageSliceId,
-        });
+        let result;
+
+        try {
+          result = await streamText({
+            messages: [...processedMessages],
+            env: context.cloudflare?.env,
+            options,
+            apiKeys,
+            files,
+            providerSettings,
+            promptId,
+            contextOptimization,
+            contextFiles: filteredFiles,
+            chatMode,
+            designScheme,
+            summary,
+            messageSliceId,
+          });
+        } catch (error: any) {
+          const message = String(error?.message || '');
+
+          if (message.includes('Unsupported model version v1')) {
+            const fallbackText = await generateGeminiText({
+              systemPrompt: 'You are Smack AI assistant. Provide concise, practical coding help.',
+              userPrompt: getLastUserPrompt(processedMessages),
+              model: process.env.DEFAULT_MODEL || 'gemini-2.5-flash',
+            });
+
+            if (fallbackText) {
+              dataStream.write(formatDataStreamPart('text', fallbackText));
+              dataStream.write(
+                formatDataStreamPart('finish_step', {
+                  finishReason: 'stop',
+                  usage: { completionTokens: 0, promptTokens: 0, totalTokens: 0 },
+                  isContinued: false,
+                }),
+              );
+              dataStream.write(
+                formatDataStreamPart('finish_message', {
+                  finishReason: 'stop',
+                  usage: { completionTokens: 0, promptTokens: 0, totalTokens: 0 },
+                }),
+              );
+              streamRecovery.stop();
+
+              return;
+            }
+          }
+
+          throw error;
+        }
 
         (async () => {
           for await (const part of result.fullStream) {
-            
             if (part.type === 'error') {
               const error: any = part.error;
               logger.error('Streaming error:', error);
 
               const { type, message, retryable, httpCode } = getErrorDetails(error.message);
               dataStream.writeData({ type: 'error', error: { type, message, retryable, httpCode } });
+
               return;
             }
           }
@@ -464,6 +519,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           if (typeof chunk !== 'string') {
             const str = JSON.stringify(chunk);
             controller.enqueue(encoder.encode(str));
+
             return;
           }
 
@@ -486,22 +542,27 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           if (chunk.startsWith('g')) {
             try {
               const parts = chunk.split(':');
+
               if (parts.length > 1) {
                 let content = parts.slice(1).join(':');
+
                 if (content.endsWith('\n')) {
                   content = content.slice(0, -1);
                 }
+
                 transformedChunk = `0:${content}\n`;
               } else {
                 throw new Error('Invalid chunk format');
               }
             } catch (error) {
               logger.warn('Failed to parse streaming chunk', { chunk, error });
+
               const warningPayload = { type: 'warning', message: 'Could not parse a streaming chunk.' };
               controller.enqueue(encoder.encode(`8: ${JSON.stringify(warningPayload)}\n`));
               transformedChunk = chunk;
             }
           }
+
           const str = transformedChunk;
           controller.enqueue(encoder.encode(str));
         },
@@ -519,6 +580,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     });
   } catch (error: any) {
     logger.error(error);
+
     const { type, message, retryable, httpCode } = getErrorDetails(error.message);
     const errorResponse = {
       error: true,
@@ -528,6 +590,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       isRetryable: retryable,
       provider: error.provider || 'unknown',
     };
+
     return new Response(JSON.stringify(errorResponse), {
       status: httpCode,
       headers: { 'Content-Type': 'application/json' },
@@ -537,6 +600,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
 function getErrorDetails(errorMessage: string) {
   errorMessage = errorMessage || 'Unknown error';
+
   let type = 'unknown';
   let retryable = true;
   let httpCode = 500;
@@ -547,6 +611,16 @@ function getErrorDetails(errorMessage: string) {
     retryable = false;
     httpCode = 400;
     message = 'Invalid model selected. Please check that the model name is correct and available.';
+  } else if (errorMessage.includes('Not implemented in client')) {
+    type = 'configuration_error';
+    retryable = false;
+    httpCode = 500;
+    message = 'Server provider configuration is invalid. Please restart the app and verify provider wiring.';
+  } else if (errorMessage.includes('Unsupported model version v1')) {
+    type = 'configuration_error';
+    retryable = false;
+    httpCode = 500;
+    message = 'Model adapter mismatch detected. Using fallback generation path.';
   } else if (
     errorMessage.includes('API key') ||
     errorMessage.includes('unauthorized') ||

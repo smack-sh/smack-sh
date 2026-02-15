@@ -2,7 +2,6 @@ import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { streamText } from '~/lib/.server/llm/stream-text';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { generateText } from 'ai';
-import { PROVIDER_LIST } from '~/utils/constants';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel } from '~/lib/.server/llm/constants';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
@@ -66,6 +65,7 @@ function validateTokenLimits(modelDetails: ModelInfo, requestedTokens: number): 
 }
 
 async function llmCallAction({ context, request }: ActionFunctionArgs) {
+  const llmManager = LLMManager.getInstance(import.meta.env);
   const { system, message, model, provider, streamOutput } = await request.json<{
     system: string;
     message: string;
@@ -174,7 +174,7 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         });
       }
 
-      const providerInfo = PROVIDER_LIST.find((p) => p.name === providerName);
+      const providerInfo = llmManager.getProvider(providerName) || llmManager.getDefaultProvider();
 
       if (!providerInfo) {
         throw new Error('Provider not found');

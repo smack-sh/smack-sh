@@ -129,29 +129,9 @@ export class ThreeStepAuthService {
     expectedOrigin: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
-      const userId = authStore.verifyStep2Token(step2Token);
-
-      if (!userId) {
-        throw new Error('Invalid step2 token');
-      }
-
-      const normalized = credential.response.clientDataJSON
-        .replace(/-/g, '+')
-        .replace(/_/g, '/')
-        .padEnd(Math.ceil(credential.response.clientDataJSON.length / 4) * 4, '=');
-      const clientDataJsonBuffer = Buffer.from(normalized, 'base64');
-      const clientData = JSON.parse(clientDataJsonBuffer.toString('utf8')) as { challenge: string };
-      const challengeUsed = authStore.consumeAuthChallenge(userId, clientData.challenge);
-
-      if (!challengeUsed) {
-        throw new Error('Invalid or expired challenge');
-      }
-
-      const passkey = authStore.findPasskeyByCredentialId(userId, credential.id);
-
-      if (!passkey) {
-        throw new Error('No matching passkey registered');
-      }
+      const userId = this._requireStep2Token(step2Token);
+      const clientData = this._consumeAuthChallenge(userId, credential.response.clientDataJSON);
+      const passkey = this._requirePasskey(userId, credential.id);
 
       const rpId = new URL(env.APP_URL || 'http://localhost:5173').hostname;
       const verification = this._webauthn.verifyAuthentication(
@@ -178,5 +158,41 @@ export class ThreeStepAuthService {
       console.error('Three-step auth step3 verify failed:', error);
       throw error;
     }
+  }
+
+  private _requireStep2Token(step2Token: string): string {
+    const userId = authStore.verifyStep2Token(step2Token);
+
+    if (!userId) {
+      throw new Error('Invalid step2 token');
+    }
+
+    return userId;
+  }
+
+  private _consumeAuthChallenge(userId: string, clientDataJson: string): { challenge: string } {
+    const normalized = clientDataJson
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(clientDataJson.length / 4) * 4, '=');
+    const clientDataJsonBuffer = Buffer.from(normalized, 'base64');
+    const clientData = JSON.parse(clientDataJsonBuffer.toString('utf8')) as { challenge: string };
+    const challengeUsed = authStore.consumeAuthChallenge(userId, clientData.challenge);
+
+    if (!challengeUsed) {
+      throw new Error('Invalid or expired challenge');
+    }
+
+    return clientData;
+  }
+
+  private _requirePasskey(userId: string, credentialId: string) {
+    const passkey = authStore.findPasskeyByCredentialId(userId, credentialId);
+
+    if (!passkey) {
+      throw new Error('No matching passkey registered');
+    }
+
+    return passkey;
   }
 }

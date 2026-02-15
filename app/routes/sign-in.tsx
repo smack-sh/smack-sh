@@ -1,20 +1,7 @@
 import { SignIn } from '@clerk/remix';
 import { json, type LoaderFunctionArgs } from '@remix-run/node';
 import { useLoaderData } from '@remix-run/react';
-
-function hasConfiguredClerkKey(key?: string): boolean {
-  if (!key) {
-    return false;
-  }
-
-  const normalized = key.trim().replace(/^['"]|['"]$/g, '');
-
-  if (normalized.includes('your_clerk_publishable_key')) {
-    return false;
-  }
-
-  return /^pk_(test|live)_/.test(normalized);
-}
+import { hasConfiguredClerkKey } from '~/utils/clerk-key';
 
 export function loader(_args: LoaderFunctionArgs) {
   const key = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;

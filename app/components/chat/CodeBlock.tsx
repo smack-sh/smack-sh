@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import type { BundledLanguage, SpecialLanguage } from 'shiki';
 import { classNames } from '~/utils/classNames';
 import { createScopedLogger } from '~/utils/logger';
+import { sanitizeHtml } from '~/utils/sanitize';
 
 import styles from './CodeBlock.module.css';
 
@@ -47,6 +48,7 @@ export const CodeBlock = memo(
         }
 
         logger.trace(`Language = ${effectiveLanguage}`);
+
         const rendered = await codeToHtml(code, { lang: effectiveLanguage, theme });
 
         if (active) {
@@ -88,7 +90,7 @@ export const CodeBlock = memo(
             </button>
           )}
         </div>
-        <div dangerouslySetInnerHTML={{ __html: html ?? '' }}></div>
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(html ?? '') }}></div>
       </div>
     );
   },

@@ -10,6 +10,7 @@ import { createScopedLogger } from '~/utils/logger';
 import { createFilesContext, extractPropertiesFromMessage } from './utils';
 import { discussPrompt } from '~/lib/common/prompts/discuss-prompt';
 import type { DesignScheme } from '~/types/design-scheme';
+import { enforceGeminiModel, enforceGeminiProvider } from '~/lib/llm/gemini-policy';
 
 export type Messages = Message[];
 
@@ -80,15 +81,15 @@ export async function streamText(props: {
     chatMode,
     designScheme,
   } = props;
-  let currentModel = DEFAULT_MODEL;
-  let currentProvider = DEFAULT_PROVIDER.name;
+  let currentModel = enforceGeminiModel(DEFAULT_MODEL);
+  let currentProvider = enforceGeminiProvider(DEFAULT_PROVIDER.name);
   let processedMessages = messages.map((message) => {
     const newMessage = { ...message };
 
     if (message.role === 'user') {
       const { model, provider, content } = extractPropertiesFromMessage(message);
-      currentModel = model;
-      currentProvider = provider;
+      currentModel = enforceGeminiModel(model);
+      currentProvider = enforceGeminiProvider(provider);
       newMessage.content = sanitizeText(content);
     } else if (message.role == 'assistant') {
       newMessage.content = sanitizeText(message.content);
@@ -103,6 +104,9 @@ export async function streamText(props: {
 
     return newMessage;
   });
+
+  currentModel = enforceGeminiModel(currentModel);
+  currentProvider = enforceGeminiProvider(currentProvider);
 
   const provider = PROVIDER_LIST.find((p) => p.name === currentProvider) || DEFAULT_PROVIDER;
   const staticModels = LLMManager.getInstance().getStaticModelListFromProvider(provider);

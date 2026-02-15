@@ -14,23 +14,46 @@ export function GitLabAuthDialog({ isOpen, onClose }: GitLabAuthDialogProps) {
   const { isConnecting, error, connect } = useGitLabConnection();
   const [token, setToken] = useState('');
   const [gitlabUrl, setGitlabUrl] = useState('https://gitlab.com');
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const toUserMessage = (err: unknown) => {
+    if (err instanceof Error && err.message.trim().length > 0) {
+      return err.message;
+    }
+
+    return 'Could not connect to GitLab. Please verify your URL and token.';
+  };
 
   const handleConnect = async (event: React.FormEvent) => {
     event.preventDefault();
+    setLocalError(null);
 
     if (!token.trim()) {
       toast.error('Please enter your GitLab access token');
       return;
     }
 
+    let normalizedUrl = gitlabUrl.trim();
+
     try {
-      await connect(token, gitlabUrl);
+      const parsed = new URL(normalizedUrl);
+      normalizedUrl = parsed.origin;
+    } catch (err) {
+      console.error('Invalid GitLab URL:', err);
+      setLocalError('Please provide a valid GitLab URL (for example: https://gitlab.com).');
+
+      return;
+    }
+
+    try {
+      await connect(token, normalizedUrl);
       toast.success('Successfully connected to GitLab!');
       setToken('');
+      setLocalError(null);
       onClose();
     } catch (error) {
-      // Error handling is done in the hook
       console.error('GitLab connect failed:', error);
+      setLocalError(toUserMessage(error));
     }
   };
 
@@ -135,9 +158,9 @@ export function GitLabAuthDialog({ isOpen, onClose }: GitLabAuthDialogProps) {
                   </div>
                 </div>
 
-                {error && (
+                {(error || localError) && (
                   <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700">
-                    <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                    <p className="text-sm text-red-800 dark:text-red-200">{localError || error}</p>
                   </div>
                 )}
 

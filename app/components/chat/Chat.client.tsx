@@ -148,6 +148,8 @@ export const ChatImpl = memo(
     const STREAM_TIMEOUT = 30000; // 30 seconds
     const [isLastMessagePartial, setIsLastMessagePartial] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'stable' | 'unstable' | 'recovering'>('stable');
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [showAuthPrompt, setShowAuthPrompt] = useState<boolean>(false);
 
     const {
       messages,
@@ -229,6 +231,33 @@ export const ChatImpl = memo(
         }
       };
     }, [isLoading, messages]);
+
+    useEffect(() => {
+      let active = true;
+
+      const loadAuthStatus = async () => {
+        try {
+          const response = await fetch('/api/auth/status');
+          const data = (await response.json()) as { authenticated?: boolean };
+
+          if (active) {
+            setIsAuthenticated(Boolean(data.authenticated));
+          }
+        } catch (error) {
+          console.error('Failed to load auth status:', error);
+
+          if (active) {
+            setIsAuthenticated(false);
+          }
+        }
+      };
+
+      loadAuthStatus();
+
+      return () => {
+        active = false;
+      };
+    }, []);
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {
@@ -351,12 +380,36 @@ export const ChatImpl = memo(
 
     const sendMessage = async (_event: React.UIEvent, messageInput?: string) => {
       const messageContent = messageInput || input;
-      if (!messageContent?.trim()) return;
+      const hasText = Boolean(messageContent?.trim());
+      const hasImages = uploadedFiles.length > 0;
+
+      if (!hasText && !hasImages) {
+        return;
+      }
+
       if (isLoading) {
         stop();
         return;
       }
-      // ... (rest of the function is the same)
+
+      if (!isAuthenticated) {
+        setShowAuthPrompt(true);
+        return;
+      }
+
+      await runAnimation();
+      clearApiErrorAlert();
+      resetEnhancer();
+
+      await append({
+        role: 'user',
+        content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent || ''}`,
+      });
+
+      setInput('');
+      setUploadedFiles([]);
+      setImageDataList([]);
+      Cookies.remove(PROMPT_COOKIE_KEY);
     };
 
     return (
@@ -425,6 +478,8 @@ export const ChatImpl = memo(
         selectedElement={selectedElement}
         setSelectedElement={setSelectedElement}
         addToolResult={addToolResult}
+        showAuthPrompt={showAuthPrompt}
+        closeAuthPrompt={() => setShowAuthPrompt(false)}
       />
     );
   },

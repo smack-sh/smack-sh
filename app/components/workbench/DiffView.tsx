@@ -10,6 +10,7 @@ import { diffFiles, extractRelativePath } from '~/utils/diff';
 import type { FileHistory } from '~/types/actions';
 import { getLanguageFromExtension } from '~/utils/getLanguageFromExtension';
 import { themeStore } from '~/lib/stores/theme';
+import { sanitizeHtml } from '~/utils/sanitize';
 
 interface CodeComparisonProps {
   beforeCode: string;
@@ -344,6 +345,8 @@ const renderContentWarning = (type: 'binary' | 'error') => (
   </div>
 );
 
+const stripShikiWrapper = (html: string) => html.replace(/<\/?pre[^>]*>/g, '').replace(/<\/?code[^>]*>/g, '');
+
 const NoChangesView = memo(
   ({
     beforeCode,
@@ -374,15 +377,16 @@ const NoChangesView = memo(
                 <span className="mr-2"> </span>
                 <span
                   dangerouslySetInnerHTML={{
-                    __html: highlighter
-                      ? highlighter
-                          .codeToHtml(line, {
-                            lang: language,
-                            theme: theme === 'dark' ? 'github-dark' : 'github-light',
-                          })
-                          .replace(/<\/?pre[^>]*>/g, '')
-                          .replace(/<\/?code[^>]*>/g, '')
-                      : line,
+                    __html: sanitizeHtml(
+                      highlighter
+                        ? stripShikiWrapper(
+                            highlighter.codeToHtml(line, {
+                              lang: language,
+                              theme: theme === 'dark' ? 'github-dark' : 'github-light',
+                            }),
+                          )
+                        : line,
+                    ),
                   }}
                 />
               </div>
@@ -423,12 +427,14 @@ const CodeLine = memo(
     const renderContent = () => {
       if (type === 'unchanged' || !block.charChanges) {
         const highlightedCode = highlighter
-          ? highlighter
-              .codeToHtml(content, { lang: language, theme: theme === 'dark' ? 'github-dark' : 'github-light' })
-              .replace(/<\/?pre[^>]*>/g, '')
-              .replace(/<\/?code[^>]*>/g, '')
+          ? stripShikiWrapper(
+              highlighter.codeToHtml(content, {
+                lang: language,
+                theme: theme === 'dark' ? 'github-dark' : 'github-light',
+              }),
+            )
           : content;
-        return <span dangerouslySetInnerHTML={{ __html: highlightedCode }} />;
+        return <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightedCode) }} />;
       }
 
       return (
@@ -437,16 +443,21 @@ const CodeLine = memo(
             const changeClass = changeColorStyles[change.type];
 
             const highlightedCode = highlighter
-              ? highlighter
-                  .codeToHtml(change.value, {
+              ? stripShikiWrapper(
+                  highlighter.codeToHtml(change.value, {
                     lang: language,
                     theme: theme === 'dark' ? 'github-dark' : 'github-light',
-                  })
-                  .replace(/<\/?pre[^>]*>/g, '')
-                  .replace(/<\/?code[^>]*>/g, '')
+                  }),
+                )
               : change.value;
 
-            return <span key={index} className={changeClass} dangerouslySetInnerHTML={{ __html: highlightedCode }} />;
+            return (
+              <span
+                key={index}
+                className={changeClass}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightedCode) }}
+              />
+            );
           })}
         </>
       );

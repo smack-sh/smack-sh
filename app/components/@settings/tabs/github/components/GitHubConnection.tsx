@@ -12,7 +12,7 @@ interface ConnectionTestResult {
 
 interface GitHubConnectionProps {
   connectionTest: ConnectionTestResult | null;
-  onTestConnection: () => void;
+  onTestConnection: () => void | Promise<void>;
 }
 
 export function GitHubConnection({ connectionTest, onTestConnection }: GitHubConnectionProps) {
@@ -20,6 +20,15 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
 
   const [token, setToken] = React.useState('');
   const [tokenType, setTokenType] = React.useState<'classic' | 'fine-grained'>('classic');
+  const [localError, setLocalError] = React.useState<string | null>(null);
+
+  const toUserMessage = (error: unknown) => {
+    if (error instanceof Error && error.message.trim().length > 0) {
+      return error.message;
+    }
+
+    return 'Unable to complete the GitHub action. Please try again.';
+  };
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +36,12 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
 
     if (!token.trim()) {
       console.log('No token provided, returning early');
+      setLocalError('Please enter a GitHub token before connecting.');
+
       return;
     }
+
+    setLocalError(null);
 
     try {
       console.log('Calling connect function...');
@@ -36,9 +49,30 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
       console.log('Connect function completed successfully');
       setToken(''); // Clear token on successful connection
     } catch (error) {
-      console.log('Connect function failed:', error);
+      console.error('GitHub connect failed:', error);
+      setLocalError(toUserMessage(error));
+    }
+  };
 
-      // Error handling is done in the hook
+  const handleDisconnect = async () => {
+    setLocalError(null);
+
+    try {
+      await disconnect();
+    } catch (error) {
+      console.error('GitHub disconnect failed:', error);
+      setLocalError(toUserMessage(error));
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setLocalError(null);
+
+    try {
+      await onTestConnection();
+    } catch (error) {
+      console.error('GitHub connection test failed:', error);
+      setLocalError(toUserMessage(error));
     }
   };
 
@@ -144,9 +178,9 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
             </div>
           </div>
 
-          {error && (
+          {(error || localError) && (
             <div className="p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-700">
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <p className="text-sm text-red-800 dark:text-red-200">{localError || error}</p>
             </div>
           )}
 
@@ -179,7 +213,7 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={disconnect}
+                    onClick={handleDisconnect}
                     type="button"
                     className={classNames(
                       'px-4 py-2 rounded-lg text-sm flex items-center gap-2',
@@ -205,7 +239,7 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
                     Dashboard
                   </Button>
                   <Button
-                    onClick={onTestConnection}
+                    onClick={handleTestConnection}
                     disabled={connectionTest?.status === 'testing'}
                     variant="outline"
                     className="flex items-center gap-2 hover:bg-smack-elements-item-backgroundActive/10 hover:text-smack-elements-textPrimary dark:hover:text-smack-elements-textPrimary transition-colors"

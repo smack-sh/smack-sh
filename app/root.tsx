@@ -1,5 +1,8 @@
 import { useStore } from '@nanostores/react';
+import { ClerkApp } from '@clerk/remix';
+import { rootAuthLoader } from '@clerk/remix/ssr.server';
 import type { LinksFunction } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
 import { themeStore } from './lib/stores/theme';
@@ -86,7 +89,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 import { logStore } from './lib/stores/logs';
 
-export default function App() {
+const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+export async function loader(args: LoaderFunctionArgs) {
+  return rootAuthLoader(args, {
+    publishableKey: clerkPublishableKey,
+    signInUrl: '/sign-in',
+    signUpUrl: '/sign-up',
+  });
+}
+
+function App() {
   const theme = useStore(themeStore);
 
   useEffect(() => {
@@ -122,3 +135,9 @@ export default function App() {
     </Layout>
   );
 }
+
+export default ClerkApp(App, {
+  publishableKey: clerkPublishableKey,
+  signInUrl: '/sign-in',
+  signUpUrl: '/sign-up',
+});

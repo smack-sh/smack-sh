@@ -83,6 +83,8 @@ interface BaseChatProps {
   selectedElement?: ElementInfo | null;
   setSelectedElement?: (element: ElementInfo | null) => void;
   addToolResult?: ({ toolCallId, result }: { toolCallId: string; result: any }) => void;
+  showAuthPrompt?: boolean;
+  closeAuthPrompt?: () => void;
 }
 
 export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
@@ -133,6 +135,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       addToolResult = () => {
         throw new Error('addToolResult not implemented');
       },
+      showAuthPrompt = false,
+      closeAuthPrompt,
     },
     ref,
   ) => {
@@ -430,11 +434,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     />
                   )}
                   {llmErrorAlert && (
-                    <LlmErrorAlert
-                      alert={llmErrorAlert}
-                      clearAlert={() => clearLlmErrorAlert?.()}
-                      onRetry={onRetry}
-                    />
+                    <LlmErrorAlert alert={llmErrorAlert} clearAlert={() => clearLlmErrorAlert?.()} onRetry={onRetry} />
                   )}
                 </div>
                 {progressAnnotations && <ProgressCompilation data={progressAnnotations} />}
@@ -480,6 +480,32 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   selectedElement={selectedElement}
                   setSelectedElement={setSelectedElement}
                 />
+                {showAuthPrompt && (
+                  <div className="absolute inset-0 bg-black/40 z-[100] flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm rounded-lg border border-smack-elements-borderColor bg-smack-elements-background-depth-2 p-5">
+                      <h3 className="text-base font-semibold text-smack-elements-textPrimary mb-2">
+                        Sign in to send messages
+                      </h3>
+                      <p className="text-sm text-smack-elements-textSecondary mb-4">
+                        Please sign in or create an account with email to continue chatting.
+                      </p>
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => closeAuthPrompt?.()}
+                          className="px-3 py-2 rounded bg-smack-elements-background-depth-3 text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <a href="/sign-up" className="px-3 py-2 rounded bg-smack-elements-background-depth-3 text-sm">
+                          Sign up
+                        </a>
+                        <a href="/sign-in" className="px-3 py-2 rounded bg-accent-600 text-white text-sm">
+                          Sign in
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </StickToBottom>
             <div className="flex flex-col justify-center">
@@ -506,7 +532,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           <ClientOnly>
             {() =>
               !isMobileView && (
-                <Workbench chatStarted={chatStarted} isStreaming={isStreaming} setSelectedElement={setSelectedElement} />
+                <Workbench
+                  chatStarted={chatStarted}
+                  isStreaming={isStreaming}
+                  setSelectedElement={setSelectedElement}
+                />
               )
             }
           </ClientOnly>

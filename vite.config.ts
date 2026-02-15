@@ -23,8 +23,38 @@ export default defineConfig(({ mode, command }) => ({
 
   build: {
     target: 'esnext',
+    chunkSizeWarningLimit: 900,
     rollupOptions: {
       external: ['firebase-admin', 'undici'],
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('@remix-run')) {
+              return 'react-vendor'
+            }
+
+            if (id.includes('shiki') || id.includes('codemirror') || id.includes('@codemirror') || id.includes('monaco')) {
+              return 'editor-vendor'
+            }
+
+            if (id.includes('@xterm') || id.includes('xterm')) {
+              return 'terminal-vendor'
+            }
+
+            if (id.includes('ai') || id.includes('@ai-sdk') || id.includes('@anthropic-ai') || id.includes('openai')) {
+              return 'ai-vendor'
+            }
+
+            if (id.includes('framer-motion') || id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'ui-vendor'
+            }
+
+            return 'vendor'
+          }
+
+          return undefined
+        },
+      },
     },
   },
 

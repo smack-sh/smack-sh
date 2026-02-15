@@ -14,7 +14,7 @@ class MockReactNativeAiProvider implements ReactNativeAiProvider {
     language: 'swift' | 'kotlin' | 'typescript';
     framework?: 'react-native';
   }): Promise<string> {
-    return `// ${input.language} bridge generated for: ${input.prompt}`;
+    return '// ' + input.language + ' bridge generated for: ' + input.prompt;
   }
 }
 
@@ -39,7 +39,7 @@ export class ReactNativeAIConverter {
       outputFramework: 'react-native',
     });
 
-    return this.addStyleSheet(mobileCode);
+    return this._addStyleSheet(mobileCode);
   }
 
   async generateNativeBridge(feature: string): Promise<{ ios: string; android: string; js: string }> {
@@ -50,8 +50,7 @@ export class ReactNativeAIConverter {
     };
   }
 
-  private addStyleSheet(code: string): string {
-    return `${code}\n\nconst styles = {};`;
+  private _addStyleSheet(code: string): string {
+    return code + '\n\nconst styles = {};';
   }
 }
-

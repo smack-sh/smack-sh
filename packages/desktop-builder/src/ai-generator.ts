@@ -1,7 +1,7 @@
 import type { DesktopAiProvider, TauriProject, TauriProjectTemplate } from './types';
 
 const DEFAULT_TAURI_CONFIG = {
-  '$schema': '../node_modules/@tauri-apps/cli/config.schema.json',
+  $schema: '../node_modules/@tauri-apps/cli/config.schema.json',
   productName: 'Smack Tauri App',
   version: '0.1.0',
   identifier: 'com.smack.generated',
@@ -46,15 +46,15 @@ class MockAiProvider implements DesktopAiProvider {
     }
 
     if (input.language === 'rust') {
-      return `
-#[tauri::command]
-pub async fn health_check() -> Result<String, String> {
-  Ok("ok".to_string())
-}
-      `.trim();
+      return [
+        '#[tauri::command]',
+        'pub async fn health_check() -> Result<String, String> {',
+        '  Ok("ok".to_string())',
+        '}',
+      ].join('\n');
     }
 
-    return `// Generated output for: ${input.userPrompt}`;
+    return '// Generated output for: ' + input.userPrompt;
   }
 }
 
@@ -82,7 +82,7 @@ export class DesktopAIGenerator {
   async generateIPCHandlers(requirements: string): Promise<string> {
     return this._ai.generate({
       systemPrompt: 'Generate Tauri IPC handlers in Rust',
-      userPrompt: `Requirements: ${requirements}`,
+      userPrompt: 'Requirements: ' + requirements,
       language: 'rust',
     });
   }
@@ -90,9 +90,8 @@ export class DesktopAIGenerator {
   async generateUI(requirements: string, template: TauriProjectTemplate): Promise<string> {
     return this._ai.generate({
       systemPrompt: 'Generate React UI for a Tauri app',
-      userPrompt: `Template: ${template}. Requirements: ${requirements}`,
+      userPrompt: 'Template: ' + template + '. Requirements: ' + requirements,
       language: 'typescript',
     });
   }
 }
-

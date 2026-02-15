@@ -424,7 +424,7 @@ function makeLog(actor: string, action: string, target: string): AuditLog {
 
 function toCsvRow(user: AdminUser): string {
   return [user.id, user.email, user.status, user.role, user.lastSeenAt]
-    .map((value) => `"${value.replaceAll('"', '""')}"`)
+    .map((value) => `"${value.split('"').join('""')}"`)
     .join(',');
 }
 

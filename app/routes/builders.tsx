@@ -11,6 +11,8 @@ export default function BuildersPage() {
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
 
+  const promptSnippet = '<div onClick={() => {}} className="card">' + prompt + '</div>';
+
   const callBuilder = async () => {
     setLoading(true);
     setError(null);
@@ -33,9 +35,7 @@ export default function BuildersPage() {
             ? { mode: 'build-apk', projectId: 'flutter-demo', projectRoot: '.' }
             : { mode: 'generate', prompt },
         'react-native':
-          runMode === 'build'
-            ? { mode: 'build-eas', projectRoot: '.' }
-            : { mode: 'convert', webCode: `<div onClick={() => {}} className="card">${prompt}</div>` },
+          runMode === 'build' ? { mode: 'build-eas', projectRoot: '.' } : { mode: 'convert', webCode: promptSnippet },
         game: { prompt },
       };
 

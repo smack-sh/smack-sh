@@ -2,6 +2,58 @@ import { useState } from 'react';
 
 type BuilderTab = 'desktop' | 'flutter' | 'react-native' | 'game';
 
+function stableStringify(value: unknown): string {
+  return JSON.stringify(sortKeysDeep(value));
+}
+
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortKeysDeep);
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+    const sorted: Record<string, unknown> = {};
+
+    for (const [key, nested] of entries) {
+      sorted[key] = sortKeysDeep(nested);
+    }
+
+    return sorted;
+  }
+
+  return value;
+}
+
+function getBuilderEndpoint(tab: BuilderTab): string {
+  const endpointMap: Record<BuilderTab, string> = {
+    desktop: '/api/builders/desktop',
+    flutter: '/api/builders/flutter',
+    'react-native': '/api/builders/react-native',
+    game: '/api/builders/game',
+  };
+
+  return endpointMap[tab];
+}
+
+function getBuilderPayload(
+  tab: BuilderTab,
+  runMode: 'generate' | 'build',
+  prompt: string,
+  promptSnippet: string,
+): Record<string, unknown> {
+  const bodyMap: Record<BuilderTab, Record<string, unknown>> = {
+    desktop:
+      runMode === 'build' ? { mode: 'build', projectRoot: '.' } : { prompt, template: 'productivity-timer', mode: 'generate' },
+    flutter:
+      runMode === 'build' ? { mode: 'build-apk', projectId: 'flutter-demo', projectRoot: '.' } : { mode: 'generate', prompt },
+    'react-native': runMode === 'build' ? { mode: 'build-eas', projectRoot: '.' } : { mode: 'convert', webCode: promptSnippet },
+    game: { prompt },
+  };
+
+  return bodyMap[tab];
+}
+
 export default function BuildersPage() {
   const [tab, setTab] = useState<BuilderTab>('desktop');
   const [runMode, setRunMode] = useState<'generate' | 'build'>('generate');
@@ -18,31 +70,11 @@ export default function BuildersPage() {
     setError(null);
 
     try {
-      const endpointMap: Record<BuilderTab, string> = {
-        desktop: '/api/builders/desktop',
-        flutter: '/api/builders/flutter',
-        'react-native': '/api/builders/react-native',
-        game: '/api/builders/game',
-      };
-
-      const bodyMap: Record<BuilderTab, Record<string, unknown>> = {
-        desktop:
-          runMode === 'build'
-            ? { mode: 'build', projectRoot: '.' }
-            : { prompt, template: 'productivity-timer', mode: 'generate' },
-        flutter:
-          runMode === 'build'
-            ? { mode: 'build-apk', projectId: 'flutter-demo', projectRoot: '.' }
-            : { mode: 'generate', prompt },
-        'react-native':
-          runMode === 'build' ? { mode: 'build-eas', projectRoot: '.' } : { mode: 'convert', webCode: promptSnippet },
-        game: { prompt },
-      };
-
-      const response = await fetch(endpointMap[tab], {
+      const payload = getBuilderPayload(tab, runMode, prompt, promptSnippet);
+      const response = await fetch(getBuilderEndpoint(tab), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyMap[tab]),
+        body: stableStringify(payload),
       });
 
       const data = (await response.json()) as Record<string, unknown> & { error?: string };

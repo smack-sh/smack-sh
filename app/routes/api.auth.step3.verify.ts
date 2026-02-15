@@ -4,6 +4,11 @@ import { ThreeStepAuthService } from '~/services/auth/three-step-auth.service';
 
 const service = new ThreeStepAuthService();
 
+function serializeAuthCookie(name: string, value: string, maxAgeSeconds: number) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   try {
     const payload = (await request.json()) as {
@@ -30,7 +35,11 @@ export async function action({ request }: ActionFunctionArgs) {
       env.APP_URL || new URL(request.url).origin,
     );
 
-    return json(result);
+    const headers = new Headers();
+    headers.append('Set-Cookie', serializeAuthCookie('smack_access_token', result.accessToken, 15 * 60));
+    headers.append('Set-Cookie', serializeAuthCookie('smack_refresh_token', result.refreshToken, 30 * 24 * 60 * 60));
+
+    return json({ success: true }, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to verify passkey';
     return json({ error: message }, { status: 400 });

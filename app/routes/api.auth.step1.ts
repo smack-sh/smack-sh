@@ -10,6 +10,8 @@ const IP_MAX_REQUESTS = 20;
 const USER_MAX_FAILURES = 5;
 const USER_LOCKOUT_MS = 10 * 60 * 1000;
 
+type Step1Payload = { username?: string; password?: string };
+
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for');
 
@@ -34,6 +36,37 @@ function isIpRateLimited(ip: string) {
   return record.count > IP_MAX_REQUESTS;
 }
 
+function getLockoutError(username: string) {
+  const userFailureRecord = usernameFailures.get(username);
+
+  if (userFailureRecord?.lockUntil && userFailureRecord.lockUntil > Date.now()) {
+    return 'Too many failed attempts. Account temporarily locked.';
+  }
+
+  return null;
+}
+
+function trackUsernameFailure(username: string) {
+  if (!username) {
+    return;
+  }
+
+  const current = usernameFailures.get(username) || { count: 0 };
+  current.count += 1;
+
+  if (current.count >= USER_MAX_FAILURES) {
+    current.lockUntil = Date.now() + USER_LOCKOUT_MS;
+  }
+
+  usernameFailures.set(username, current);
+}
+
+function parseStep1Payload(payload: Step1Payload) {
+  const username = payload.username?.trim() || '';
+  const password = payload.password || '';
+  return { username, password };
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   let attemptedUsername = '';
 
@@ -44,19 +77,18 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ error: 'Too many requests from this IP. Please try again shortly.' }, { status: 429 });
     }
 
-    const payload = (await request.json()) as { username?: string; password?: string };
-    const username = payload.username?.trim();
-    const password = payload.password;
-    attemptedUsername = username || '';
+    const payload = (await request.json()) as Step1Payload;
+    const { username, password } = parseStep1Payload(payload);
+    attemptedUsername = username;
 
     if (!username || !password) {
       return json({ error: 'Username and password are required' }, { status: 400 });
     }
 
-    const userFailureRecord = usernameFailures.get(username);
+    const lockoutError = getLockoutError(username);
 
-    if (userFailureRecord?.lockUntil && userFailureRecord.lockUntil > Date.now()) {
-      return json({ error: 'Too many failed attempts. Account temporarily locked.' }, { status: 423 });
+    if (lockoutError) {
+      return json({ error: lockoutError }, { status: 423 });
     }
 
     const result = await service.authenticateStep1(username, password);
@@ -64,18 +96,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return json(result);
   } catch (error) {
-    const username = attemptedUsername;
-
-    if (username) {
-      const current = usernameFailures.get(username) || { count: 0 };
-      current.count += 1;
-
-      if (current.count >= USER_MAX_FAILURES) {
-        current.lockUntil = Date.now() + USER_LOCKOUT_MS;
-      }
-
-      usernameFailures.set(username, current);
-    }
+    trackUsernameFailure(attemptedUsername);
 
     const message = error instanceof Error ? error.message : 'Step 1 failed';
 

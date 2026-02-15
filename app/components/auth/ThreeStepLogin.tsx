@@ -180,17 +180,14 @@ export function ThreeStepLogin() {
         body: JSON.stringify(payload),
       });
       const verifyData = (await verifyRes.json()) as {
-        accessToken?: string;
-        refreshToken?: string;
+        success?: boolean;
         error?: string;
       };
 
-      if (!verifyRes.ok || !verifyData.accessToken || !verifyData.refreshToken) {
+      if (!verifyRes.ok || !verifyData.success) {
         throw new Error(verifyData.error || 'Passkey verification failed');
       }
 
-      localStorage.setItem('accessToken', verifyData.accessToken);
-      localStorage.setItem('refreshToken', verifyData.refreshToken);
       window.location.href = '/dashboard';
     } catch (err) {
       console.error('Three-step login step3 error:', err);

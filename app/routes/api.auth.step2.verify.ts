@@ -11,6 +11,8 @@ const SESSION_WINDOW_MS = 10 * 60 * 1000;
 const SESSION_MAX_ATTEMPTS = 8;
 const SESSION_LOCKOUT_MS = 10 * 60 * 1000;
 
+type Step2VerifyPayload = { sessionId?: string; code?: string };
+
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for');
 
@@ -35,6 +37,43 @@ function isIpRateLimited(ip: string) {
   return record.count > IP_MAX_REQUESTS;
 }
 
+function getSessionLockError(sessionId: string) {
+  const now = Date.now();
+  const sessionRecord = sessionAttempts.get(sessionId);
+
+  if (sessionRecord?.lockUntil && sessionRecord.lockUntil > now) {
+    return 'Session is temporarily locked due to too many attempts';
+  }
+
+  return null;
+}
+
+function trackSessionFailure(sessionId: string) {
+  if (!sessionId) {
+    return;
+  }
+
+  const now = Date.now();
+  const current = sessionAttempts.get(sessionId);
+  const next =
+    !current || current.resetAt <= now
+      ? { count: 1, resetAt: now + SESSION_WINDOW_MS, lockUntil: undefined as number | undefined }
+      : { ...current, count: current.count + 1 };
+
+  if (next.count >= SESSION_MAX_ATTEMPTS) {
+    next.lockUntil = now + SESSION_LOCKOUT_MS;
+  }
+
+  sessionAttempts.set(sessionId, next);
+}
+
+function parsePayload(payload: Step2VerifyPayload) {
+  return {
+    sessionId: payload.sessionId?.trim() || '',
+    code: payload.code?.trim() || '',
+  };
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   let sessionIdForTracking = '';
 
@@ -45,39 +84,26 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ error: 'Too many verification attempts from this IP' }, { status: 429 });
     }
 
-    const payload = (await request.json()) as { sessionId?: string; code?: string };
-    sessionIdForTracking = payload.sessionId?.trim() || '';
+    const payload = (await request.json()) as Step2VerifyPayload;
+    const { sessionId, code } = parsePayload(payload);
+    sessionIdForTracking = sessionId;
 
-    if (!payload.sessionId || !payload.code) {
+    if (!sessionId || !code) {
       return json({ error: 'sessionId and code are required' }, { status: 400 });
     }
 
-    const now = Date.now();
-    const sessionRecord = sessionAttempts.get(payload.sessionId);
+    const lockError = getSessionLockError(sessionId);
 
-    if (sessionRecord?.lockUntil && sessionRecord.lockUntil > now) {
-      return json({ error: 'Session is temporarily locked due to too many attempts' }, { status: 429 });
+    if (lockError) {
+      return json({ error: lockError }, { status: 429 });
     }
 
-    const result = await service.verifyEmailCode(payload.sessionId, payload.code);
-    sessionAttempts.delete(payload.sessionId);
+    const result = await service.verifyEmailCode(sessionId, code);
+    sessionAttempts.delete(sessionId);
 
     return json(result);
   } catch (error) {
-    if (sessionIdForTracking) {
-      const now = Date.now();
-      const current = sessionAttempts.get(sessionIdForTracking);
-      const next =
-        !current || current.resetAt <= now
-          ? { count: 1, resetAt: now + SESSION_WINDOW_MS, lockUntil: undefined as number | undefined }
-          : { ...current, count: current.count + 1 };
-
-      if (next.count >= SESSION_MAX_ATTEMPTS) {
-        next.lockUntil = now + SESSION_LOCKOUT_MS;
-      }
-
-      sessionAttempts.set(sessionIdForTracking, next);
-    }
+    trackSessionFailure(sessionIdForTracking);
 
     const message = error instanceof Error ? error.message : 'Unable to verify code';
     const status = message.toLowerCase().includes('locked') ? 429 : 400;

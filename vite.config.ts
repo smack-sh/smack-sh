@@ -15,6 +15,28 @@ dotenv.config()
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+function pickVendorChunk(id: string) {
+  if (!id.includes('node_modules')) {
+    return undefined
+  }
+
+  const chunkRules: Array<{ name: string; markers: string[] }> = [
+    { name: 'react-vendor', markers: ['react', 'react-dom', '@remix-run'] },
+    { name: 'editor-vendor', markers: ['shiki', 'codemirror', '@codemirror', 'monaco'] },
+    { name: 'terminal-vendor', markers: ['@xterm', 'xterm'] },
+    { name: 'ai-vendor', markers: ['ai', '@ai-sdk', '@anthropic-ai', 'openai'] },
+    { name: 'ui-vendor', markers: ['framer-motion', 'chart.js', 'react-chartjs-2'] },
+  ]
+
+  for (const rule of chunkRules) {
+    if (rule.markers.some((marker) => id.includes(marker))) {
+      return rule.name
+    }
+  }
+
+  return 'vendor'
+}
+
 export default defineConfig(({ mode, command }) => ({
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
@@ -28,31 +50,7 @@ export default defineConfig(({ mode, command }) => ({
       external: ['firebase-admin', 'undici'],
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('@remix-run')) {
-              return 'react-vendor'
-            }
-
-            if (id.includes('shiki') || id.includes('codemirror') || id.includes('@codemirror') || id.includes('monaco')) {
-              return 'editor-vendor'
-            }
-
-            if (id.includes('@xterm') || id.includes('xterm')) {
-              return 'terminal-vendor'
-            }
-
-            if (id.includes('ai') || id.includes('@ai-sdk') || id.includes('@anthropic-ai') || id.includes('openai')) {
-              return 'ai-vendor'
-            }
-
-            if (id.includes('framer-motion') || id.includes('chart.js') || id.includes('react-chartjs-2')) {
-              return 'ui-vendor'
-            }
-
-            return 'vendor'
-          }
-
-          return undefined
+          return pickVendorChunk(id)
         },
       },
     },

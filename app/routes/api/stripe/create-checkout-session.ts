@@ -1,14 +1,17 @@
-import { json } from '@remix-run/node';
+import { json, type ActionFunctionArgs } from '@remix-run/node';
 import Stripe from 'stripe';
 import { requireAuth } from '~/utils/auth.server';
+import { env } from '~/config/env.server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
+  apiVersion: '2025-10-29.clover',
 });
 
 export async function action({ request }: ActionFunctionArgs) {
   const userId = await requireAuth({ request });
-  const { priceId } = await request.json();
+  const payload = (await request.json()) as { priceId?: string };
+  const { priceId } = payload;
+  const appUrl = env.APP_URL || new URL(request.url).origin;
 
   if (!priceId) {
     return json({ error: 'Price ID is required' }, { status: 400 });
@@ -23,8 +26,8 @@ export async function action({ request }: ActionFunctionArgs) {
       },
     ],
     mode: 'payment',
-    success_url: `${process.env.APP_URL}/dashboard?payment=success`,
-    cancel_url: `${process.env.APP_URL}/pricing?payment=cancelled`,
+    success_url: `${appUrl}/dashboard?payment=success`,
+    cancel_url: `${appUrl}/pricing?payment=cancelled`,
     metadata: {
       userId,
     },

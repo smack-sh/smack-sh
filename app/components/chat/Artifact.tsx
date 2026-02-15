@@ -8,6 +8,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
 import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
+import { sanitizeHtml } from '~/utils/sanitize';
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -174,6 +175,7 @@ function ShellCodeBlock({ classsName, code }: ShellCodeBlockProps) {
     const render = async () => {
       const highlighter = await shellHighlighterPromise;
       const rendered = highlighter.codeToHtml(code, { lang: 'shell', theme: 'dark-plus' });
+
       if (active) {
         setHTML(rendered);
       }
@@ -190,7 +192,7 @@ function ShellCodeBlock({ classsName, code }: ShellCodeBlockProps) {
     <div
       className={classNames('text-xs', classsName)}
       dangerouslySetInnerHTML={{
-        __html: html,
+        __html: sanitizeHtml(html),
       }}
     ></div>
   );

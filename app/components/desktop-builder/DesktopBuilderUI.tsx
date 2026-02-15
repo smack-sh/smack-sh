@@ -26,7 +26,7 @@ export const DesktopBuilderUI: React.FC = () => {
 
     try {
       // For demonstration, we'll hardcode a target. In a real UI, this would be selectable.
-      const target: BuildTarget = 'electron-mac'; // Example target
+      const target: BuildTarget = 'tauri-mac'; // Tauri-first desktop target
 
       const finalProjectPath = await generateAndBuildDesktopApp(
         userRequirements,

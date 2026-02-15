@@ -22,6 +22,7 @@ function getServerManager(): any {
 }
 export class LLMManager {
   private static _instance: LLMManager;
+  private static _cleanupHandlersRegistered = false;
   private _providers: Map<string, BaseProvider> = new Map();
   private _modelList: ModelInfo[] = [];
   private readonly _env: any = {};
@@ -59,6 +60,12 @@ export class LLMManager {
   }
 
   private _setupCleanupHandlers() {
+    if (LLMManager._cleanupHandlersRegistered) {
+      return;
+    }
+
+    LLMManager._cleanupHandlersRegistered = true;
+
     const cleanup = async () => {
       if (this._isShuttingDown) {
         return;
@@ -305,6 +312,12 @@ export class LLMManager {
   }
 
   getDefaultProvider(): BaseProvider {
+    const googleProvider = this._providers.get('Google');
+
+    if (googleProvider) {
+      return googleProvider;
+    }
+
     const firstProvider = this._providers.values().next().value;
 
     if (!firstProvider) {

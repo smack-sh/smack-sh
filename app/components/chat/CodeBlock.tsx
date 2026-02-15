@@ -1,11 +1,8 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useState } from 'react';
 import type { BundledLanguage, SpecialLanguage } from 'shiki';
 import { classNames } from '~/utils/classNames';
-import { createScopedLogger } from '~/utils/logger';
 
 import styles from './CodeBlock.module.css';
-
-const logger = createScopedLogger('CodeBlock');
 
 interface CodeBlockProps {
   className?: string;
@@ -17,7 +14,6 @@ interface CodeBlockProps {
 
 export const CodeBlock = memo(
   ({ className, code, language = 'plaintext', theme = 'dark-plus', disableCopy = false }: CodeBlockProps) => {
-    const [html, setHTML] = useState<string | undefined>(undefined);
     const [copied, setCopied] = useState(false);
 
     const copyToClipboard = () => {
@@ -33,33 +29,6 @@ export const CodeBlock = memo(
         setCopied(false);
       }, 2000);
     };
-
-    useEffect(() => {
-      let active = true;
-
-      const processCode = async () => {
-        const { bundledLanguages, codeToHtml, isSpecialLang } = await import('shiki');
-        let effectiveLanguage = language;
-
-        if (language && !isSpecialLang(language) && !(language in bundledLanguages)) {
-          logger.warn(`Unsupported language '${language}', falling back to plaintext`);
-          effectiveLanguage = 'plaintext';
-        }
-
-        logger.trace(`Language = ${effectiveLanguage}`);
-        const rendered = await codeToHtml(code, { lang: effectiveLanguage, theme });
-
-        if (active) {
-          setHTML(rendered);
-        }
-      };
-
-      processCode();
-
-      return () => {
-        active = false;
-      };
-    }, [code, language, theme]);
 
     return (
       <div className={classNames('relative group text-left', className)}>
@@ -88,7 +57,15 @@ export const CodeBlock = memo(
             </button>
           )}
         </div>
-        <div dangerouslySetInnerHTML={{ __html: html ?? '' }}></div>
+        <pre
+          className={classNames(
+            'overflow-x-auto rounded-md border border-smack-elements-borderColor bg-smack-elements-background-depth-2 p-3',
+            theme === 'light-plus' ? 'text-black' : 'text-white',
+          )}
+          data-language={language}
+        >
+          <code>{code}</code>
+        </pre>
       </div>
     );
   },

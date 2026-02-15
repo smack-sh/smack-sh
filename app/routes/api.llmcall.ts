@@ -2,12 +2,12 @@ import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { streamText } from '~/lib/.server/llm/stream-text';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { generateText } from 'ai';
-import { PROVIDER_LIST } from '~/utils/constants';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel } from '~/lib/.server/llm/constants';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
 import { createScopedLogger } from '~/utils/logger';
+import { enforceGeminiModel, enforceGeminiProvider, GEMINI_PROVIDER_NAME } from '~/lib/llm/gemini-policy';
 
 export async function action(args: ActionFunctionArgs) {
   return llmCallAction(args);
@@ -65,6 +65,7 @@ function validateTokenLimits(modelDetails: ModelInfo, requestedTokens: number): 
 }
 
 async function llmCallAction({ context, request }: ActionFunctionArgs) {
+  const llmManager = LLMManager.getInstance(import.meta.env);
   const { system, message, model, provider, streamOutput } = await request.json<{
     system: string;
     message: string;
@@ -73,10 +74,11 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     streamOutput?: boolean;
   }>();
 
-  const { name: providerName } = provider;
+  const providerName = enforceGeminiProvider(provider?.name);
+  const forcedModel = enforceGeminiModel(model);
 
   // validate 'model' and 'provider' fields
-  if (!model || typeof model !== 'string') {
+  if (!forcedModel || typeof forcedModel !== 'string') {
     throw new Response('Invalid or missing model', {
       status: 400,
       statusText: 'Bad Request',
@@ -152,7 +154,9 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
   } else {
     try {
       const models = await getModelList({ apiKeys, providerSettings, serverEnv: context.cloudflare?.env as any });
-      const modelDetails = models.find((m: ModelInfo) => m.name === model);
+      const modelDetails =
+        models.find((m: ModelInfo) => m.provider === GEMINI_PROVIDER_NAME && m.name === forcedModel) ||
+        models.find((m: ModelInfo) => m.provider === GEMINI_PROVIDER_NAME);
 
       if (!modelDetails) {
         throw new Error('Model not found');
@@ -170,13 +174,13 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
         });
       }
 
-      const providerInfo = PROVIDER_LIST.find((p) => p.name === provider.name);
+      const providerInfo = llmManager.getProvider(providerName) || llmManager.getDefaultProvider();
 
       if (!providerInfo) {
         throw new Error('Provider not found');
       }
 
-      logger.info(`Generating response Provider: ${provider.name}, Model: ${modelDetails.name}`);
+      logger.info(`Generating response Provider: ${providerName}, Model: ${modelDetails.name}`);
 
       // DEBUG: Log reasoning model detection
       const isReasoning = isReasoningModel(modelDetails.name);

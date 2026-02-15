@@ -16,6 +16,8 @@ export function FeatureLoader({
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     const loadFeature = async () => {
       try {
         const feature = getFeatureById(featureId);
@@ -25,13 +27,23 @@ export function FeatureLoader({
         }
 
         const { default: Component } = await feature.component();
-        setComponent(() => Component);
+
+        if (active) {
+          setComponent(() => Component);
+          setError(null);
+        }
       } catch (err) {
-        setError(err as Error);
+        if (active) {
+          setError(err as Error);
+        }
       }
     };
 
     loadFeature();
+
+    return () => {
+      active = false;
+    };
   }, [featureId]);
 
   if (error) {

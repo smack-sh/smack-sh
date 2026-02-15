@@ -1,15 +1,12 @@
 import { Pool } from 'pg';
-import { config } from 'dotenv';
-
-// Load environment variables
-config();
+import { env } from '~/config/env.server';
 
 // AI Database Configuration
 export const aiPool = new Pool({
   user: process.env.AI_DB_USER || 'postgres',
   host: process.env.AI_DB_HOST || 'localhost',
   database: process.env.AI_DB_NAME || 'smack_ai',
-  password: process.env.AI_DB_PASSWORD || 'postgres',
+  password: env.AI_DB_PASSWORD,
   port: parseInt(process.env.AI_DB_PORT || '5432'),
 });
 
@@ -18,7 +15,7 @@ export const codePool = new Pool({
   user: process.env.CODE_DB_USER || 'postgres',
   host: process.env.CODE_DB_HOST || 'localhost',
   database: process.env.CODE_DB_NAME || 'smack_code',
-  password: process.env.CODE_DB_PASSWORD || 'postgres',
+  password: process.env.CODE_DB_PASSWORD || env.AI_DB_PASSWORD,
   port: parseInt(process.env.CODE_DB_PORT || '5433'), // Different port for the second DB
 });
 

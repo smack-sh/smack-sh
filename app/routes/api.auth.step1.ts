@@ -3,14 +3,40 @@ import { ThreeStepAuthService } from '~/services/auth/three-step-auth.service';
 
 const service = new ThreeStepAuthService();
 const ipAttempts = new Map<string, { count: number; resetAt: number }>();
-const usernameFailures = new Map<string, { count: number; lockUntil?: number }>();
+const usernameFailures = new Map<string, { count: number; lockUntil?: number; resetAt?: number }>();
 
 const IP_WINDOW_MS = 60_000;
 const IP_MAX_REQUESTS = 20;
 const USER_MAX_FAILURES = 5;
 const USER_LOCKOUT_MS = 10 * 60 * 1000;
+const USER_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 60_000;
+let cleanupStarted = false;
 
 type Step1Payload = { username?: string; password?: string };
+
+if (!cleanupStarted) {
+  cleanupStarted = true;
+
+  setInterval(() => {
+    const now = Date.now();
+
+    for (const [ip, record] of ipAttempts) {
+      if (record.resetAt <= now) {
+        ipAttempts.delete(ip);
+      }
+    }
+
+    for (const [username, record] of usernameFailures) {
+      const lockExpired = !record.lockUntil || record.lockUntil <= now;
+      const windowExpired = !record.resetAt || record.resetAt <= now;
+
+      if (lockExpired && windowExpired) {
+        usernameFailures.delete(username);
+      }
+    }
+  }, SWEEP_INTERVAL_MS).unref();
+}
 
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -51,11 +77,19 @@ function trackUsernameFailure(username: string) {
     return;
   }
 
+  const now = Date.now();
   const current = usernameFailures.get(username) || { count: 0 };
+
+  if (current.resetAt && now > current.resetAt) {
+    current.count = 0;
+    current.resetAt = undefined;
+  }
+
+  current.resetAt = now + USER_FAILURE_WINDOW_MS;
   current.count += 1;
 
   if (current.count >= USER_MAX_FAILURES) {
-    current.lockUntil = Date.now() + USER_LOCKOUT_MS;
+    current.lockUntil = now + USER_LOCKOUT_MS;
   }
 
   usernameFailures.set(username, current);
@@ -64,6 +98,7 @@ function trackUsernameFailure(username: string) {
 function parseStep1Payload(payload: Step1Payload) {
   const username = payload.username?.trim() || '';
   const password = payload.password || '';
+
   return { username, password };
 }
 

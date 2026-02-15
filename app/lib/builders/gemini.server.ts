@@ -81,13 +81,19 @@ function extractCandidateText(payload: GeminiGenerateResponse): string | null {
   }
 
   const trimmed = combined.trim();
+
   return trimmed.length > 0 ? trimmed : null;
 }
 
 export function extractJsonObject(input: string): Record<string, unknown> | null {
   try {
-    const direct = JSON.parse(input) as Record<string, unknown>;
-    return direct;
+    const direct = JSON.parse(input);
+
+    if (isRecordObject(direct)) {
+      return direct;
+    }
+
+    return null;
   } catch {
     const match = input.match(/\{[\s\S]*\}/);
 
@@ -96,9 +102,19 @@ export function extractJsonObject(input: string): Record<string, unknown> | null
     }
 
     try {
-      return JSON.parse(match[0]) as Record<string, unknown>;
+      const fallback = JSON.parse(match[0]);
+
+      if (isRecordObject(fallback)) {
+        return fallback;
+      }
+
+      return null;
     } catch {
       return null;
     }
   }
+}
+
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

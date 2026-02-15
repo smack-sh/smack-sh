@@ -20,6 +20,7 @@ function base64UrlToUint8Array(value: string): Uint8Array {
     .replace(/_/g, '/')
     .padEnd(Math.ceil(value.length / 4) * 4, '=');
   const raw = atob(padded);
+
   return Uint8Array.from(raw, (char) => char.charCodeAt(0));
 }
 
@@ -54,6 +55,12 @@ export function ThreeStepLogin() {
   const [step2Token, setStep2Token] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showDemoCredentials =
+    (import.meta.env.DEV || import.meta.env.VITE_THREE_STEP_SHOW_DEMO === 'true') &&
+    Boolean(import.meta.env.VITE_THREE_STEP_DEMO_USERNAME) &&
+    Boolean(import.meta.env.VITE_THREE_STEP_DEMO_PASSWORD);
+  const demoUsername = import.meta.env.VITE_THREE_STEP_DEMO_USERNAME || '';
+  const demoPassword = import.meta.env.VITE_THREE_STEP_DEMO_PASSWORD || '';
 
   const handleStep1 = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -195,9 +202,11 @@ export function ThreeStepLogin() {
     <div className="min-h-screen flex items-center justify-center bg-smack-elements-background-depth-1 px-4">
       <div className="max-w-md w-full bg-smack-elements-background-depth-2 border border-smack-elements-borderColor rounded-lg p-6 space-y-4">
         <h1 className="text-xl font-semibold text-smack-elements-textPrimary">Three-Step Authentication</h1>
-        <p className="text-sm text-smack-elements-textSecondary">
-          Demo user: <code>{'admin / ChangeMe#12345'}</code> (override with THREE_STEP_DEMO_* env vars)
-        </p>
+        {showDemoCredentials ? (
+          <p className="text-sm text-smack-elements-textSecondary">
+            Demo user: <code>{`${demoUsername} / ${demoPassword}`}</code>
+          </p>
+        ) : null}
 
         {error && <div className="text-sm p-2 rounded bg-red-500/10 text-red-500">{error}</div>}
 

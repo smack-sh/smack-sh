@@ -1,5 +1,5 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
-import { ThreeStepAuthService } from '~/services/auth/three-step-auth.service';
+import { AuthLockError, ThreeStepAuthService } from '~/services/auth/three-step-auth.service';
 
 const service = new ThreeStepAuthService();
 const ipAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -10,8 +10,33 @@ const IP_MAX_REQUESTS = 30;
 const SESSION_WINDOW_MS = 10 * 60 * 1000;
 const SESSION_MAX_ATTEMPTS = 8;
 const SESSION_LOCKOUT_MS = 10 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 60_000;
+let cleanupStarted = false;
 
 type Step2VerifyPayload = { sessionId?: string; code?: string };
+
+if (!cleanupStarted) {
+  cleanupStarted = true;
+
+  setInterval(() => {
+    const now = Date.now();
+
+    for (const [ip, record] of ipAttempts) {
+      if (record.resetAt <= now) {
+        ipAttempts.delete(ip);
+      }
+    }
+
+    for (const [sessionId, record] of sessionAttempts) {
+      const lockExpired = !record.lockUntil || record.lockUntil <= now;
+      const windowExpired = record.resetAt <= now;
+
+      if (lockExpired && windowExpired) {
+        sessionAttempts.delete(sessionId);
+      }
+    }
+  }, SWEEP_INTERVAL_MS).unref();
+}
 
 function getClientIp(request: Request) {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -74,6 +99,16 @@ function parsePayload(payload: Step2VerifyPayload) {
   };
 }
 
+function isAuthLockedError(error: unknown) {
+  return (
+    error instanceof AuthLockError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: string }).code === 'AUTH_LOCKED')
+  );
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   let sessionIdForTracking = '';
 
@@ -106,7 +141,7 @@ export async function action({ request }: ActionFunctionArgs) {
     trackSessionFailure(sessionIdForTracking);
 
     const message = error instanceof Error ? error.message : 'Unable to verify code';
-    const status = message.toLowerCase().includes('locked') ? 429 : 400;
+    const status = isAuthLockedError(error) ? 429 : 400;
 
     return json({ error: message }, { status });
   }

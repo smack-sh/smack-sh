@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type BuilderTab = 'desktop' | 'flutter' | 'react-native' | 'game';
 
@@ -13,12 +13,7 @@ function getBuilderEndpoint(tab: BuilderTab): string {
   return endpointMap[tab];
 }
 
-function getBuilderBody(
-  tab: BuilderTab,
-  runMode: 'generate' | 'build',
-  prompt: string,
-  promptSnippet: string,
-): string {
+function getBuilderBody(tab: BuilderTab, runMode: 'generate' | 'build', prompt: string, promptSnippet: string): string {
   const promptJson = JSON.stringify(prompt);
   const snippetJson = JSON.stringify(promptSnippet);
 
@@ -51,37 +46,68 @@ export default function BuildersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const pollControllerRef = useRef<AbortController | null>(null);
 
   const promptSnippet = '<div onClick={() => {}} className="card">' + prompt + '</div>';
+
+  useEffect(() => {
+    return () => {
+      pollControllerRef.current?.abort();
+    };
+  }, []);
 
   const callBuilder = async () => {
     setLoading(true);
     setError(null);
 
     try {
+      pollControllerRef.current?.abort();
+
+      const controller = new AbortController();
+      pollControllerRef.current = controller;
+
       const response = await fetch(getBuilderEndpoint(tab), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: getBuilderBody(tab, runMode, prompt, promptSnippet),
+        signal: controller.signal,
       });
 
-      const data = (await response.json()) as Record<string, unknown> & { error?: string };
-
       if (!response.ok) {
-        throw new Error(data.error || 'Request failed');
+        const errorText = await response.text();
+        let message = `Request failed (${response.status})`;
+
+        try {
+          const parsed = JSON.parse(errorText) as { error?: string };
+
+          if (parsed?.error) {
+            message = parsed.error;
+          }
+        } catch {
+          if (errorText.trim().length > 0) {
+            message = `${message}: ${errorText.slice(0, 240)}`;
+          }
+        }
+
+        throw new Error(message);
       }
 
+      const data = (await response.json()) as Record<string, unknown> & { error?: string };
       setOutput(JSON.stringify(data, null, 2));
 
       const maybeJobId = typeof data.jobId === 'string' ? data.jobId : null;
       setJobId(maybeJobId);
 
       if (maybeJobId) {
-        pollJobStatus(maybeJobId).catch((pollError) => {
+        pollJobStatus(maybeJobId, controller.signal).catch((pollError) => {
           console.error('Job polling failed:', pollError);
         });
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
+
       console.error('Builder request failed:', err);
       setError(err instanceof Error ? err.message : 'Unknown builder error');
     } finally {
@@ -89,9 +115,13 @@ export default function BuildersPage() {
     }
   };
 
-  const pollJobStatus = async (id: string) => {
+  const pollJobStatus = async (id: string, signal: AbortSignal) => {
     for (let i = 0; i < 30; i++) {
-      const response = await fetch(`/api/builders/jobs/${id}`);
+      if (signal.aborted) {
+        return;
+      }
+
+      const response = await fetch(`/api/builders/jobs/${id}`, { signal });
 
       if (!response.ok) {
         break;

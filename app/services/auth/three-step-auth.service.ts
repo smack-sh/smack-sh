@@ -15,6 +15,15 @@ type VerifyPasskeyInput = {
   };
 };
 
+export class AuthLockError extends Error {
+  code = 'AUTH_LOCKED' as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthLockError';
+  }
+}
+
 export class ThreeStepAuthService {
   private _webauthn = new WebAuthnService();
   private _email = new EmailService();
@@ -78,7 +87,7 @@ export class ThreeStepAuthService {
 
       if (!verification.ok) {
         if (verification.reason === 'locked' || verification.reason === 'max_attempts') {
-          throw new Error('Verification is temporarily locked due to too many attempts');
+          throw new AuthLockError('Verification is temporarily locked due to too many attempts');
         }
 
         throw new Error('Invalid or expired code');

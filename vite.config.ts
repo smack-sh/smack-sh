@@ -1,40 +1,43 @@
-import { cloudflareDevProxyVitePlugin as remixCloudflareDevProxy, vitePlugin as remixVitePlugin } from '@remix-run/dev'
-import UnoCSS from 'unocss/vite'
-import { defineConfig, type ViteDevServer } from 'vite'
-import { nodePolyfills } from 'vite-plugin-node-polyfills'
-import { optimizeCssModules } from 'vite-plugin-optimize-css-modules'
-import tsconfigPaths from 'vite-tsconfig-paths'
-import * as dotenv from 'dotenv'
+import { cloudflareDevProxyVitePlugin as remixCloudflareDevProxy, vitePlugin as remixVitePlugin } from '@remix-run/dev';
+import UnoCSS from 'unocss/vite';
+import { defineConfig, type ViteDevServer } from 'vite';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
+import tsconfigPaths from 'vite-tsconfig-paths';
+import * as dotenv from 'dotenv';
 
-import { fileURLToPath } from 'url'
-import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-dotenv.config({ path: '.env.local' })
-dotenv.config({ path: '.env' })
-dotenv.config()
+dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
+dotenv.config();
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function pickVendorChunk(id: string) {
   if (!id.includes('node_modules')) {
-    return undefined
+    return undefined;
   }
 
   const chunkRules: Array<{ name: string; markers: string[] }> = [
-    { name: 'react-vendor', markers: ['react', 'react-dom', '@remix-run'] },
+    {
+      name: 'ui-vendor',
+      markers: ['node_modules/framer-motion/', 'node_modules/chart.js/', 'node_modules/react-chartjs-2/'],
+    },
+    { name: 'react-vendor', markers: ['node_modules/react/', 'node_modules/react-dom/', 'node_modules/@remix-run/'] },
     { name: 'editor-vendor', markers: ['shiki', 'codemirror', '@codemirror', 'monaco'] },
     { name: 'terminal-vendor', markers: ['@xterm', 'xterm'] },
     { name: 'ai-vendor', markers: ['ai', '@ai-sdk', '@anthropic-ai', 'openai'] },
-    { name: 'ui-vendor', markers: ['framer-motion', 'chart.js', 'react-chartjs-2'] },
-  ]
+  ];
 
   for (const rule of chunkRules) {
     if (rule.markers.some((marker) => id.includes(marker))) {
-      return rule.name
+      return rule.name;
     }
   }
 
-  return 'vendor'
+  return 'vendor';
 }
 
 export default defineConfig(({ mode, command }) => ({
@@ -50,7 +53,7 @@ export default defineConfig(({ mode, command }) => ({
       external: ['firebase-admin', 'undici'],
       output: {
         manualChunks(id) {
-          return pickVendorChunk(id)
+          return pickVendorChunk(id);
         },
       },
     },
@@ -75,9 +78,10 @@ export default defineConfig(({ mode, command }) => ({
           return {
             code: `import { Buffer } from 'buffer'\n${code}`,
             map: null,
-          }
+          };
         }
-        return null
+
+        return null;
       },
     },
 
@@ -145,29 +149,30 @@ export default defineConfig(({ mode, command }) => ({
       '**/tests/preview/**',
     ],
   },
-}))
+}));
 
 function chrome129IssuePlugin() {
   return {
     name: 'chrome129IssuePlugin',
     configureServer(server: ViteDevServer) {
       server.middlewares.use((req, res, next) => {
-        const raw = req.headers['user-agent']?.match(/Chrom(e|ium)\/([0-9]+)\./)
+        const raw = req.headers['user-agent']?.match(/Chrom(e|ium)\/([0-9]+)\./);
 
         if (raw && parseInt(raw[2], 10) === 129) {
-          res.setHeader('content-type', 'text/html')
+          res.setHeader('content-type', 'text/html');
           res.end(`
             <body>
               <h1>Chrome 129 Dev Issue</h1>
               <p>Use Chrome Canary for local development.</p>
               <p>This does not affect production builds.</p>
             </body>
-          `)
-          return
+          `);
+
+          return;
         }
 
-        next()
-      })
+        next();
+      });
     },
-  }
+  };
 }

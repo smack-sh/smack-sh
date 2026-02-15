@@ -68,6 +68,7 @@ function hasRequiredFlags(flags: number) {
 function verifyRpIdHash(authData: Buffer, expectedRpId: string) {
   const rpIdHashFromAuthData = authData.subarray(0, 32);
   const expectedRpIdHash = createHash('sha256').update(expectedRpId).digest();
+
   return rpIdHashFromAuthData.equals(expectedRpIdHash);
 }
 
@@ -81,6 +82,7 @@ function verifyAssertionSignature(
   const signedPayload = Buffer.concat([authData, clientDataHash]);
   const signature = fromBase64Url(signatureBase64Url);
   const publicKey = createPublicKey(credentialPublicKeyPem);
+
   return verify('sha256', signedPayload, publicKey, signature);
 }
 
@@ -107,42 +109,49 @@ export class WebAuthnService {
     credentialPublicKeyPem: string,
     previousSignCount: number,
   ) {
-    if (!credential.response.authenticatorData || !credential.response.signature) {
+    try {
+      if (!credential.response.authenticatorData || !credential.response.signature) {
+        return { verified: false as const };
+      }
+
+      const { buffer: clientDataJsonBuffer, parsed: clientData } = parseClientData(credential.response.clientDataJSON);
+
+      if (!isClientDataValid(clientData, expectedChallenge, expectedOrigin)) {
+        return { verified: false as const };
+      }
+
+      const authData = parseAuthenticatorData(credential.response.authenticatorData);
+
+      if (!authData) {
+        return { verified: false as const };
+      }
+
+      if (!verifyRpIdHash(authData, expectedRpId)) {
+        return { verified: false as const };
+      }
+
+      const flags = authData.readUInt8(32);
+
+      if (!hasRequiredFlags(flags)) {
+        return { verified: false as const };
+      }
+
+      const newSignCount = authData.readUInt32BE(33);
+
+      if (newSignCount <= previousSignCount) {
+        return { verified: false as const };
+      }
+
+      if (
+        !verifyAssertionSignature(authData, clientDataJsonBuffer, credential.response.signature, credentialPublicKeyPem)
+      ) {
+        return { verified: false as const };
+      }
+
+      return { verified: true as const, newSignCount };
+    } catch (error) {
+      console.error('WebAuthn verification failed:', error);
       return { verified: false as const };
     }
-
-    const { buffer: clientDataJsonBuffer, parsed: clientData } = parseClientData(credential.response.clientDataJSON);
-
-    if (!isClientDataValid(clientData, expectedChallenge, expectedOrigin)) {
-      return { verified: false as const };
-    }
-
-    const authData = parseAuthenticatorData(credential.response.authenticatorData);
-
-    if (!authData) {
-      return { verified: false as const };
-    }
-
-    if (!verifyRpIdHash(authData, expectedRpId)) {
-      return { verified: false as const };
-    }
-
-    const flags = authData.readUInt8(32);
-
-    if (!hasRequiredFlags(flags)) {
-      return { verified: false as const };
-    }
-
-    const newSignCount = authData.readUInt32BE(33);
-
-    if (newSignCount <= previousSignCount) {
-      return { verified: false as const };
-    }
-
-    if (!verifyAssertionSignature(authData, clientDataJsonBuffer, credential.response.signature, credentialPublicKeyPem)) {
-      return { verified: false as const };
-    }
-
-    return { verified: true as const, newSignCount };
   }
 }

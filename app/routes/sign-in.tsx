@@ -7,11 +7,13 @@ function hasConfiguredClerkKey(key?: string): boolean {
     return false;
   }
 
-  if (key.includes('your_clerk_publishable_key')) {
+  const normalized = key.trim().replace(/^['"]|['"]$/g, '');
+
+  if (normalized.includes('your_clerk_publishable_key')) {
     return false;
   }
 
-  return /^pk_(test|live)_/.test(key);
+  return /^pk_(test|live)_/.test(normalized);
 }
 
 export function loader(_args: LoaderFunctionArgs) {

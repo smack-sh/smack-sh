@@ -97,7 +97,9 @@ function hasConfiguredClerkKey(key?: string): key is string {
     return false;
   }
 
-  return /^pk_(test|live)_/.test(key);
+  const normalized = key.trim().replace(/^['"]|['"]$/g, '');
+
+  return /^pk_(test|live)_/.test(normalized);
 }
 
 export async function loader(args: LoaderFunctionArgs) {

@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, createPublicKey, randomBytes, verify } from 'node:crypto';
 
 type PublicKeyCredentialResponseJSON = {
   clientDataJSON: string;
@@ -40,7 +40,18 @@ export class WebAuthnService {
     };
   }
 
-  verifyAuthentication(credential: PublicKeyCredentialJSON, expectedChallenge: string, expectedOrigin: string) {
+  verifyAuthentication(
+    credential: PublicKeyCredentialJSON,
+    expectedChallenge: string,
+    expectedOrigin: string,
+    expectedRpId: string,
+    credentialPublicKeyPem: string,
+    previousSignCount: number,
+  ) {
+    if (!credential.response.authenticatorData || !credential.response.signature) {
+      return { verified: false as const };
+    }
+
     const clientDataJsonBuffer = fromBase64Url(credential.response.clientDataJSON);
     const clientData = JSON.parse(clientDataJsonBuffer.toString('utf8')) as {
       type: string;
@@ -57,9 +68,46 @@ export class WebAuthnService {
     }
 
     if (clientData.origin !== expectedOrigin) {
-      return { verified: false };
+      return { verified: false as const };
     }
 
-    return { verified: true };
+    const authData = fromBase64Url(credential.response.authenticatorData);
+
+    if (authData.length < 37) {
+      return { verified: false as const };
+    }
+
+    const rpIdHashFromAuthData = authData.subarray(0, 32);
+    const expectedRpIdHash = createHash('sha256').update(expectedRpId).digest();
+
+    if (!rpIdHashFromAuthData.equals(expectedRpIdHash)) {
+      return { verified: false as const };
+    }
+
+    const flags = authData.readUInt8(32);
+    const userPresent = (flags & 0x01) !== 0;
+    const userVerified = (flags & 0x04) !== 0;
+
+    if (!userPresent || !userVerified) {
+      return { verified: false as const };
+    }
+
+    const newSignCount = authData.readUInt32BE(33);
+
+    if (newSignCount <= previousSignCount) {
+      return { verified: false as const };
+    }
+
+    const clientDataHash = createHash('sha256').update(clientDataJsonBuffer).digest();
+    const signedPayload = Buffer.concat([authData, clientDataHash]);
+    const signature = fromBase64Url(credential.response.signature);
+    const publicKey = createPublicKey(credentialPublicKeyPem);
+    const signatureValid = verify('sha256', signedPayload, publicKey, signature);
+
+    if (!signatureValid) {
+      return { verified: false as const };
+    }
+
+    return { verified: true as const, newSignCount };
   }
 }

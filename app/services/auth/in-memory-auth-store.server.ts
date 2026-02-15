@@ -11,6 +11,9 @@ export type VerificationCodeRecord = {
   codeHash: string;
   expiresAt: number;
   usedAt?: number;
+  failedAttempts: number;
+  lastFailedAt?: number;
+  lockUntil?: number;
 };
 
 export type Step2TokenRecord = {
@@ -31,7 +34,17 @@ type AuthUser = {
   username: string;
   email: string;
   passwordHash: string;
-  passkeys: Array<{ credentialId: string }>;
+  passkeys: Array<{ credentialId: string; publicKeyPem: string; signCount: number }>;
+};
+
+type OpaqueTokenRecord = {
+  token: string;
+  userId: string;
+  type: 'access' | 'refresh';
+  expiresAt: number;
+  createdAt: number;
+  revokedAt?: number;
+  replacedByToken?: string;
 };
 
 const users = new Map<string, AuthUser>();
@@ -40,6 +53,7 @@ const tempSessions = new Map<string, TempSession>();
 const verificationCodes = new Map<string, VerificationCodeRecord[]>();
 const step2Tokens = new Map<string, Step2TokenRecord>();
 const authChallenges = new Map<string, AuthChallengeRecord[]>();
+const opaqueTokens = new Map<string, OpaqueTokenRecord>();
 
 const cleanupInterval = 60_000;
 let cleanupStarted = false;
@@ -122,6 +136,12 @@ function pruneExpired() {
       records.filter((record) => record.expiresAt > now),
     );
   }
+
+  for (const [token, record] of opaqueTokens) {
+    if (record.expiresAt <= now || record.revokedAt) {
+      opaqueTokens.delete(token);
+    }
+  }
 }
 
 function startCleanupLoop() {
@@ -171,6 +191,7 @@ export const authStore = {
       userId,
       codeHash: hashCode(code),
       expiresAt: Date.now() + ttlMs,
+      failedAttempts: 0,
     };
     const current = verificationCodes.get(userId) || [];
     verificationCodes.set(userId, [record, ...current].slice(0, 5));
@@ -182,16 +203,37 @@ export const authStore = {
     const latest = records.find((record) => !record.usedAt && record.expiresAt > now);
 
     if (!latest) {
-      return false;
+      return { ok: false as const, reason: 'missing' as const };
+    }
+
+    if (latest.lockUntil && latest.lockUntil > now) {
+      return { ok: false as const, reason: 'locked' as const, lockUntil: latest.lockUntil };
     }
 
     const valid = latest.codeHash === hashCode(code);
 
     if (valid) {
       latest.usedAt = now;
+      latest.failedAttempts = 0;
+
+      return { ok: true as const };
     }
 
-    return valid;
+    latest.failedAttempts += 1;
+    latest.lastFailedAt = now;
+
+    if (latest.failedAttempts >= 5) {
+      latest.lockUntil = now + 15 * 60 * 1000;
+      latest.usedAt = now;
+
+      return { ok: false as const, reason: 'max_attempts' as const, lockUntil: latest.lockUntil };
+    }
+
+    if (latest.failedAttempts >= 3) {
+      latest.lockUntil = now + latest.failedAttempts * 1000;
+    }
+
+    return { ok: false as const, reason: 'invalid' as const, lockUntil: latest.lockUntil };
   },
 
   createStep2Token(userId: string, ttlMs = 10 * 60 * 1000) {
@@ -233,5 +275,90 @@ export const authStore = {
     target.usedAt = now;
 
     return true;
+  },
+
+  findPasskeyByCredentialId(userId: string, credentialId: string) {
+    const user = users.get(userId);
+
+    if (!user) {
+      return null;
+    }
+
+    return user.passkeys.find((passkey) => passkey.credentialId === credentialId) || null;
+  },
+
+  updatePasskeySignCount(userId: string, credentialId: string, signCount: number) {
+    const user = users.get(userId);
+
+    if (!user) {
+      return false;
+    }
+
+    const passkey = user.passkeys.find((candidate) => candidate.credentialId === credentialId);
+
+    if (!passkey) {
+      return false;
+    }
+
+    passkey.signCount = signCount;
+
+    return true;
+  },
+
+  issueOpaqueTokenPair(userId: string, accessTtlMs = 15 * 60 * 1000, refreshTtlMs = 30 * 24 * 60 * 60 * 1000) {
+    const now = Date.now();
+    const accessToken = randomBytes(32).toString('base64url');
+    const refreshToken = randomBytes(48).toString('base64url');
+
+    opaqueTokens.set(accessToken, {
+      token: accessToken,
+      userId,
+      type: 'access',
+      expiresAt: now + accessTtlMs,
+      createdAt: now,
+    });
+
+    opaqueTokens.set(refreshToken, {
+      token: refreshToken,
+      userId,
+      type: 'refresh',
+      expiresAt: now + refreshTtlMs,
+      createdAt: now,
+    });
+
+    return { accessToken, refreshToken };
+  },
+
+  verifyOpaqueToken(token: string, expectedType: 'access' | 'refresh') {
+    const record = opaqueTokens.get(token);
+
+    if (!record || record.type !== expectedType || record.expiresAt <= Date.now() || record.revokedAt) {
+      return null;
+    }
+
+    return { userId: record.userId, type: record.type };
+  },
+
+  rotateRefreshToken(token: string, ttlMs = 30 * 24 * 60 * 60 * 1000) {
+    const record = opaqueTokens.get(token);
+
+    if (!record || record.type !== 'refresh' || record.expiresAt <= Date.now() || record.revokedAt) {
+      return null;
+    }
+
+    const nextToken = randomBytes(48).toString('base64url');
+    const now = Date.now();
+    record.revokedAt = now;
+    record.replacedByToken = nextToken;
+
+    opaqueTokens.set(nextToken, {
+      token: nextToken,
+      userId: record.userId,
+      type: 'refresh',
+      expiresAt: now + ttlMs,
+      createdAt: now,
+    });
+
+    return nextToken;
   },
 };

@@ -3,6 +3,7 @@ import { ClerkApp } from '@clerk/remix';
 import { rootAuthLoader } from '@clerk/remix/ssr.server';
 import type { LinksFunction } from '@remix-run/cloudflare';
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { json } from '@remix-run/cloudflare';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import tailwindReset from '@unocss/reset/tailwind-compat.css?url';
 import { themeStore } from './lib/stores/theme';
@@ -91,7 +92,15 @@ import { logStore } from './lib/stores/logs';
 
 const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+function hasConfiguredClerkKey(key?: string): key is string {
+  return Boolean(key && key.startsWith('pk_') && !key.includes('your_clerk_publishable_key'));
+}
+
 export async function loader(args: LoaderFunctionArgs) {
+  if (!hasConfiguredClerkKey(clerkPublishableKey)) {
+    return json({ clerkReady: false });
+  }
+
   return rootAuthLoader(args, {
     publishableKey: clerkPublishableKey,
     signInUrl: '/sign-in',
@@ -136,8 +145,12 @@ function App() {
   );
 }
 
-export default ClerkApp(App, {
-  publishableKey: clerkPublishableKey,
-  signInUrl: '/sign-in',
-  signUpUrl: '/sign-up',
-});
+const WrappedApp = hasConfiguredClerkKey(clerkPublishableKey)
+  ? ClerkApp(App, {
+      publishableKey: clerkPublishableKey,
+      signInUrl: '/sign-in',
+      signUpUrl: '/sign-up',
+    })
+  : App;
+
+export default WrappedApp;

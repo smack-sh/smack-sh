@@ -74,9 +74,13 @@ export class ThreeStepAuthService {
         throw new Error('Invalid or expired session');
       }
 
-      const valid = authStore.verifyLatestCode(session.userId, code);
+      const verification = authStore.verifyLatestCode(session.userId, code);
 
-      if (!valid) {
+      if (!verification.ok) {
+        if (verification.reason === 'locked' || verification.reason === 'max_attempts') {
+          throw new Error('Verification is temporarily locked due to too many attempts');
+        }
+
         throw new Error('Invalid or expired code');
       }
 
@@ -134,18 +138,31 @@ export class ThreeStepAuthService {
         throw new Error('Invalid or expired challenge');
       }
 
+      const passkey = authStore.findPasskeyByCredentialId(userId, credential.id);
+
+      if (!passkey) {
+        throw new Error('No matching passkey registered');
+      }
+
+      const rpId = new URL(env.APP_URL || 'http://localhost:5173').hostname;
       const verification = this._webauthn.verifyAuthentication(
         credential,
         clientData.challenge,
         expectedOrigin || env.APP_URL || 'http://localhost:5173',
+        rpId,
+        passkey.publicKeyPem,
+        passkey.signCount,
       );
 
       if (!verification.verified) {
         throw new Error('Passkey verification failed');
       }
 
-      const accessToken = Buffer.from(`${userId}:${Date.now()}:access`).toString('base64url');
-      const refreshToken = Buffer.from(`${userId}:${Date.now()}:refresh`).toString('base64url');
+      if (typeof verification.newSignCount === 'number') {
+        authStore.updatePasskeySignCount(userId, credential.id, verification.newSignCount);
+      }
+
+      const { accessToken, refreshToken } = authStore.issueOpaqueTokenPair(userId);
 
       return { accessToken, refreshToken };
     } catch (error) {

@@ -1,4 +1,5 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
+import { env } from '~/config/env.server';
 import { ThreeStepAuthService } from '~/services/auth/three-step-auth.service';
 
 const service = new ThreeStepAuthService();
@@ -23,8 +24,11 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ error: 'step2Token and credential are required' }, { status: 400 });
     }
 
-    const expectedOrigin = request.headers.get('origin') || new URL(request.url).origin;
-    const result = await service.verifyPasskey(payload.step2Token, payload.credential, expectedOrigin);
+    const result = await service.verifyPasskey(
+      payload.step2Token,
+      payload.credential,
+      env.APP_URL || new URL(request.url).origin,
+    );
 
     return json(result);
   } catch (error) {

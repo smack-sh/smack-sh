@@ -13,6 +13,7 @@ const envSchema = z.object({
   SMTP_PASS: z.string().min(1, 'SMTP_PASS is required'),
   AI_DB_PASSWORD: z.string().min(1, 'AI_DB_PASSWORD is required'),
   APP_URL: z.string().url('APP_URL must be a valid URL').optional(),
+  EMAIL_TRANSPORT_ENABLED: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1, 'STRIPE_WEBHOOK_SECRET is required').optional(),
   SMTP_PORT: z.string().optional(),
   SMTP_FROM: z.string().optional(),

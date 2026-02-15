@@ -24,27 +24,13 @@ export async function generateGeminiText(args: GeminiGenerateArgs): Promise<stri
 
   const model = args.model || DEFAULT_GEMINI_MODEL;
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const body = {
-    systemInstruction: {
-      parts: [{ text: args.systemPrompt }],
-    },
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: args.userPrompt }],
-      },
-    ],
-    generationConfig: {
-      temperature: typeof args.temperature === 'number' ? args.temperature : 0.2,
-      maxOutputTokens: 4096,
-    },
-  };
+  const body = buildGeminiRequestBody(args);
 
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body,
     });
 
     if (!response.ok) {
@@ -52,13 +38,50 @@ export async function generateGeminiText(args: GeminiGenerateArgs): Promise<stri
     }
 
     const payload = (await response.json()) as GeminiGenerateResponse;
-    const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim();
+    const text = extractCandidateText(payload);
 
     return text || null;
   } catch (error) {
     console.error('Gemini generation failed:', error);
     return null;
   }
+}
+
+function buildGeminiRequestBody(args: GeminiGenerateArgs): string {
+  const temperature = typeof args.temperature === 'number' ? args.temperature : 0.2;
+  const systemPrompt = JSON.stringify(args.systemPrompt);
+  const userPrompt = JSON.stringify(args.userPrompt);
+
+  return (
+    '{"systemInstruction":{"parts":[{"text":' +
+    systemPrompt +
+    '}]},"contents":[{"role":"user","parts":[{"text":' +
+    userPrompt +
+    '}]}],"generationConfig":{"temperature":' +
+    String(temperature) +
+    ',"maxOutputTokens":4096}}'
+  );
+}
+
+function extractCandidateText(payload: GeminiGenerateResponse): string | null {
+  if (!payload.candidates || payload.candidates.length === 0) {
+    return null;
+  }
+
+  const first = payload.candidates[0];
+
+  if (!first.content || !first.content.parts || first.content.parts.length === 0) {
+    return null;
+  }
+
+  let combined = '';
+
+  for (const part of first.content.parts) {
+    combined += part.text || '';
+  }
+
+  const trimmed = combined.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function extractJsonObject(input: string): Record<string, unknown> | null {

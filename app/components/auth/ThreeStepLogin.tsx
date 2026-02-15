@@ -20,13 +20,7 @@ function base64UrlToUint8Array(value: string): Uint8Array {
     .replace(/_/g, '/')
     .padEnd(Math.ceil(value.length / 4) * 4, '=');
   const raw = atob(padded);
-  const bytes = new Uint8Array(raw.length);
-
-  for (let i = 0; i < raw.length; i++) {
-    bytes[i] = raw.charCodeAt(i);
-  }
-
-  return bytes;
+  return Uint8Array.from(raw, (char) => char.charCodeAt(0));
 }
 
 function arrayBufferToBase64Url(buffer: ArrayBuffer): string {

@@ -7,7 +7,15 @@ function hasConfiguredClerkKey(key?: string): boolean {
     return false;
   }
 
-  return key.startsWith('pk_') && !key.includes('your_clerk_publishable_key');
+  if (key.includes('your_clerk_publishable_key')) {
+    return false;
+  }
+
+  if (!/^pk_(test|live)_/.test(key)) {
+    return false;
+  }
+
+  return key.includes('$');
 }
 
 export function loader(_args: LoaderFunctionArgs) {

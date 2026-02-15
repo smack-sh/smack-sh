@@ -108,10 +108,12 @@ export default defineConfig(({ mode, command }) => ({
 
   optimizeDeps: {
     include: [],
+    exclude: ['undici'],
   },
 
   resolve: {
     alias: {
+      'node:util/types': resolve(__dirname, './emptyUtilTypes.js'),
       'util/types': resolve(__dirname, './emptyUtilTypes.js'),
       '~': resolve(__dirname, './app'),
       '@smack-os': resolve(__dirname, './smack-os'),

@@ -1,11 +1,19 @@
+import { getAuth } from '@clerk/remix/ssr.server';
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { ReactNativeAIConverterAdapter } from '~/lib/builders/react-native';
 import { enqueueBuilderJob } from '~/lib/builders/jobs.server';
 
 const converter = new ReactNativeAIConverterAdapter();
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action(args: ActionFunctionArgs) {
   try {
+    const { request } = args;
+    const { userId } = await getAuth(args);
+
+    if (!userId) {
+      return json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const payload = (await request.json()) as {
       webCode?: string;
       bridgeFeature?: string;

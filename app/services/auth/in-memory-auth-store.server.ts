@@ -243,12 +243,24 @@ export const authStore = {
     return token;
   },
 
+  getStep2TokenUserId(token: string) {
+    const record = step2Tokens.get(token);
+
+    if (!record || record.expiresAt <= Date.now()) {
+      return null;
+    }
+
+    return record.userId;
+  },
+
   verifyStep2Token(token: string) {
     const record = step2Tokens.get(token);
 
     if (!record || record.expiresAt <= Date.now()) {
       return null;
     }
+
+    step2Tokens.delete(token);
 
     return record.userId;
   },

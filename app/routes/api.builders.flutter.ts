@@ -1,3 +1,4 @@
+import { getAuth } from '@clerk/remix/ssr.server';
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { FlutterAIGeneratorAdapter, FlutterBuildServiceAdapter } from '~/lib/builders/flutter';
 import { enqueueBuilderJob } from '~/lib/builders/jobs.server';
@@ -5,8 +6,15 @@ import { enqueueBuilderJob } from '~/lib/builders/jobs.server';
 const generator = new FlutterAIGeneratorAdapter();
 const buildService = new FlutterBuildServiceAdapter();
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action(args: ActionFunctionArgs) {
   try {
+    const { request } = args;
+    const { userId } = await getAuth(args);
+
+    if (!userId) {
+      return json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const payload = (await request.json()) as {
       prompt?: string;
       projectId?: string;

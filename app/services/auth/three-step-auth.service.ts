@@ -95,7 +95,7 @@ export class ThreeStepAuthService {
 
   async initiatePasskeyAuth(step2Token: string): Promise<{ challenge: string; options: unknown }> {
     try {
-      const userId = authStore.verifyStep2Token(step2Token);
+      const userId = authStore.getStep2TokenUserId(step2Token);
 
       if (!userId) {
         throw new Error('Invalid step2 token');

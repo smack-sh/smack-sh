@@ -27,6 +27,11 @@ const envSchema = z.object({
   CODE_DB_NAME: z.string().optional(),
   CODE_DB_PASSWORD: z.string().optional(),
   CODE_DB_PORT: z.string().optional(),
+  VERCEL_ACCESS_TOKEN: z.string().optional(),
+  NETLIFY_TOKEN: z.string().optional(),
+  GITHUB_ACCESS_TOKEN: z.string().optional(),
+  GITLAB_ACCESS_TOKEN: z.string().optional(),
+  SUPABASE_ACCESS_TOKEN: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

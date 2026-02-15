@@ -1,11 +1,19 @@
+import { getAuth } from '@clerk/remix/ssr.server';
 import { json, type ActionFunctionArgs } from '@remix-run/node';
 import { DesktopAIGeneratorAdapter, type TauriProjectTemplate } from '~/lib/builders/desktop';
 import { enqueueBuilderJob } from '~/lib/builders/jobs.server';
 
 const generator = new DesktopAIGeneratorAdapter();
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action(args: ActionFunctionArgs) {
   try {
+    const { request } = args;
+    const { userId } = await getAuth(args);
+
+    if (!userId) {
+      return json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const payload = (await request.json()) as {
       prompt?: string;
       template?: TauriProjectTemplate;

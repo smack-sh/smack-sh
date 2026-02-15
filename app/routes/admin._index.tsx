@@ -1,6 +1,7 @@
 import { json, type LoaderFunctionArgs } from '@remix-run/node';
 import { Link, useLoaderData } from '@remix-run/react';
 import { useMemo, useState, useEffect } from 'react';
+import { env } from '~/config/env.server';
 import { requireAdmin } from '~/utils/auth.server';
 
 type AdminSection = {
@@ -67,11 +68,11 @@ export async function loader(args: LoaderFunctionArgs) {
   await requireAdmin(args);
 
   const providerStatus = {
-    vercel: Boolean(process.env.VITE_VERCEL_ACCESS_TOKEN),
-    netlify: Boolean(process.env.VITE_NETLIFY_ACCESS_TOKEN),
-    github: Boolean(process.env.VITE_GITHUB_ACCESS_TOKEN),
-    gitlab: Boolean(process.env.VITE_GITLAB_ACCESS_TOKEN),
-    supabase: Boolean(process.env.VITE_SUPABASE_ACCESS_TOKEN),
+    vercel: Boolean(env.VERCEL_ACCESS_TOKEN),
+    netlify: Boolean(env.NETLIFY_TOKEN),
+    github: Boolean(env.GITHUB_ACCESS_TOKEN),
+    gitlab: Boolean(env.GITLAB_ACCESS_TOKEN),
+    supabase: Boolean(env.SUPABASE_ACCESS_TOKEN),
   };
 
   return json({

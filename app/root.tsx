@@ -97,11 +97,7 @@ function hasConfiguredClerkKey(key?: string): key is string {
     return false;
   }
 
-  if (!/^pk_(test|live)_/.test(key)) {
-    return false;
-  }
-
-  return key.includes('$');
+  return /^pk_(test|live)_/.test(key);
 }
 
 export async function loader(args: LoaderFunctionArgs) {

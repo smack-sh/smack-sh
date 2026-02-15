@@ -11,11 +11,7 @@ function hasConfiguredClerkKey(key?: string): boolean {
     return false;
   }
 
-  if (!/^pk_(test|live)_/.test(key)) {
-    return false;
-  }
-
-  return key.includes('$');
+  return /^pk_(test|live)_/.test(key);
 }
 
 export function loader(_args: LoaderFunctionArgs) {

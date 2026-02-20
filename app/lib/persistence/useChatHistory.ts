@@ -1,7 +1,7 @@
 import { useLoaderData, useNavigate, useSearchParams } from '@remix-run/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { atom } from 'nanostores';
-import { generateId, type JSONValue, type Message } from 'ai';
+import { generateId, type JSONValue, type UIMessage as Message } from 'ai';
 import { toast } from 'react-toastify';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { logStore } from '~/lib/stores/logs'; // Import logStore
@@ -200,17 +200,7 @@ export function useChatHistory() {
               const projectCommands = await detectProjectCommands(files);
               const commandActionsString = createCommandActionsString(projectCommands);
 
-              filteredMessages = [
-                {
-                  id: generateId(),
-                  role: 'user',
-                  content: 'Restore project from snapshot',
-                  annotations: ['no-store', 'hidden'],
-                },
-                {
-                  id: snapshotMessageId,
-                  role: 'assistant',
-                  content: `smack Restored your chat from a snapshot. You can revert this message to load the full chat history.
+              const assistantContent = `smack Restored your chat from a snapshot. You can revert this message to load the full chat history.
                   <smackArtifact id="restored-project-setup" title="Restored Project & Setup" type="bundled">
                   ${Object.entries(snapshot?.files || {})
                     .map(([key, value]) =>
@@ -220,13 +210,20 @@ export function useChatHistory() {
                     )
                     .join('\n')}
                   ${commandActionsString}
-                  </smackArtifact>`,
-                  annotations: [
-                    'no-store',
-                    ...(summary
-                      ? [{ chatId: snapshotMessageId, type: 'chatSummary', summary }]
-                      : []),
-                  ],
+                  </smackArtifact>`;
+
+              filteredMessages = [
+                {
+                  id: generateId(),
+                  role: 'user',
+                  content: 'Restore project from snapshot',
+                  parts: [{ type: 'text', text: 'Restore project from snapshot' }],
+                },
+                {
+                  id: snapshotMessageId,
+                  role: 'assistant',
+                  content: assistantContent,
+                  parts: [{ type: 'text', text: assistantContent }],
                 },
                 ...filteredMessages,
               ];

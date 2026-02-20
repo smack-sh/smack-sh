@@ -1,14 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import { Button } from '~/components/ui/Button';
 import { classNames } from '~/utils/classNames';
 import { useGitHubConnection } from '~/lib/hooks';
+import { createScopedLogger } from '~/utils/logger';
 
 interface ConnectionTestResult {
   status: 'success' | 'error' | 'testing';
   message: string;
   timestamp?: number;
 }
+
+const logger = createScopedLogger('GitHubConnection');
 
 interface GitHubConnectionProps {
   connectionTest: ConnectionTestResult | null;
@@ -23,22 +27,49 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleConnect called with token:', token ? 'token provided' : 'no token', 'tokenType:', tokenType);
+    logger.info('handleConnect called with token:', (Boolean(token)) ? 'token provided' : 'no token', 'tokenType:', tokenType);
 
     if (!token.trim()) {
-      console.log('No token provided, returning early');
+      logger.warn('No token provided, returning early');
+      toast.error('Please enter a GitHub access token');
       return;
     }
 
     try {
-      console.log('Calling connect function...');
+      logger.info('Calling connect function...');
       await connect(token, tokenType);
-      console.log('Connect function completed successfully');
+      logger.info('Connect function completed successfully');
       setToken(''); // Clear token on successful connection
-    } catch (error) {
-      console.log('Connect function failed:', error);
+      toast.success('Successfully connected to GitHub!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect to GitHub';
+      logger.error('Connect function failed:', err);
+      toast.error(`Connection failed: ${errorMessage}`);
+    }
+  };
 
-      // Error handling is done in the hook
+  const handleTestConnection = async () => {
+    try {
+      logger.info('Testing GitHub connection...');
+      await onTestConnection();
+      logger.info('Connection test completed');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Connection test failed';
+      logger.error('Connection test failed:', err);
+      toast.error(`Test failed: ${errorMessage}`);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      logger.info('Disconnecting from GitHub...');
+      await disconnect();
+      logger.info('Successfully disconnected');
+      toast.success('Disconnected from GitHub');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect';
+      logger.error('Disconnect failed:', err);
+      toast.error(`Disconnect failed: ${errorMessage}`);
     }
   };
 
@@ -179,7 +210,7 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={disconnect}
+                    onClick={handleDisconnect}
                     type="button"
                     className={classNames(
                       'px-4 py-2 rounded-lg text-sm flex items-center gap-2',
@@ -205,7 +236,7 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
                     Dashboard
                   </Button>
                   <Button
-                    onClick={onTestConnection}
+                    onClick={handleTestConnection}
                     disabled={connectionTest?.status === 'testing'}
                     variant="outline"
                     className="flex items-center gap-2 hover:bg-smack-elements-item-backgroundActive/10 hover:text-smack-elements-textPrimary dark:hover:text-smack-elements-textPrimary transition-colors"

@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react';
 import type { Message } from 'ai';
+import { generateId } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { useAnimate } from 'framer-motion';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -295,7 +296,6 @@ export const ChatImpl = memo(
           description: errorInfo.message,
           provider: provider.name,
           errorType,
-          retryable: errorInfo.isRetryable,
         });
         setData([]);
         if (messages[messages.length - 1]?.role === 'assistant') {
@@ -356,7 +356,108 @@ export const ChatImpl = memo(
         stop();
         return;
       }
-      // ... (rest of the function is the same)
+
+      await runAnimation();
+
+      if (chatStarted && !autoSelectTemplate) {
+        const attachments: Attachment[] = [];
+
+        imageDataList.forEach((imageData, index) => {
+          attachments.push({
+            name: uploadedFiles[index].name,
+            contentType: uploadedFiles[index].type,
+            url: imageData,
+          });
+        });
+
+        const messageToSend: Message = {
+          role: 'user',
+          content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${messageContent}`,
+          id: generateId(),
+          createdAt: new Date(),
+        };
+
+        if (attachments.length > 0) {
+          messageToSend.experimental_attachments = attachments;
+        }
+
+        append(messageToSend);
+
+        setUploadedFiles([]);
+        setImageDataList([]);
+        setInput('');
+        resetEnhancer();
+        Cookies.remove(PROMPT_COOKIE_KEY);
+        textareaRef.current?.blur();
+
+        return;
+      }
+
+      const { template: selectedTemplateName, title } = await selectStarterTemplate({
+        message: messageContent,
+        model,
+        provider,
+      });
+
+      if (!selectedTemplateName) {
+        handleError(new Error('Failed to select template'), 'template');
+        return;
+      }
+
+      setFakeLoading(true);
+      const templateMessages = await getTemplates(selectedTemplateName, title);
+
+      if (!templateMessages) {
+        handleError(new Error('Failed to load template'), 'template');
+        return;
+      }
+
+      const attachments: Attachment[] = [];
+
+      imageDataList.forEach((imageData, index) => {
+        attachments.push({
+          name: uploadedFiles[index].name,
+          contentType: uploadedFiles[index].type,
+          url: imageData,
+        });
+      });
+
+      logStore.logSystem(`Selected template: ${selectedTemplateName}`, {
+        template: selectedTemplateName,
+        title,
+      });
+
+      // Send the assistant message first (template files)
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: templateMessages.assistantMessage,
+        id: generateId(),
+        createdAt: new Date(),
+      };
+
+      // Then send user's follow-up message
+      const userMsg: Message = {
+        role: 'user',
+        content: `[Model: ${model}]\n\n[Provider: ${provider.name}]\n\n${templateMessages.userMessage}\n\n${messageContent}`,
+        id: generateId(),
+        createdAt: new Date(),
+      };
+
+      if (attachments.length > 0) {
+        userMsg.experimental_attachments = attachments;
+      }
+
+      // Append both messages
+      append(assistantMsg);
+      append(userMsg);
+
+      setUploadedFiles([]);
+      setImageDataList([]);
+      setFakeLoading(false);
+      setInput('');
+      resetEnhancer();
+      Cookies.remove(PROMPT_COOKIE_KEY);
+      textareaRef.current?.blur();
     };
 
     return (

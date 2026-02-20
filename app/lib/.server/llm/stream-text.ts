@@ -1,4 +1,4 @@
-import { convertToCoreMessages, streamText as _streamText, type Message } from 'ai';
+import { convertToCoreMessages, streamText as _streamText, type UIMessage as Message } from 'ai';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
 import { getSystemPrompt } from '~/lib/common/prompts/prompts';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, WORK_DIR } from '~/utils/constants';
@@ -44,8 +44,8 @@ function getCompletionTokenLimit(modelDetails: any): number {
 }
 
 function sanitizeText(text: string): string {
-  let sanitized = text.replace(/<div class=\\"__smackThought__\\">.*?<\/div>/s, '');
-  sanitized = sanitized.replace(/<think>.*?<\/think>/s, '');
+  let sanitized = text.replace(/<div class=\\"__smackThought__\\">[\s\S]*?<\/div>/gs, '');
+  sanitized = sanitized.replace(/<think>[\s\S]*?<\/think>/gs, '');
   sanitized = sanitized.replace(/<smackAction type="file" filePath="package-lock\.json">[\s\S]*?<\/smackAction>/g, '');
 
   return sanitized.trim();
@@ -90,7 +90,7 @@ export async function streamText(props: {
       currentModel = model;
       currentProvider = provider;
       newMessage.content = sanitizeText(content);
-    } else if (message.role == 'assistant') {
+    } else if (message.role === 'assistant') {
       newMessage.content = sanitizeText(message.content);
     }
 
@@ -256,21 +256,15 @@ export async function streamText(props: {
         )
       : options || {};
 
-  // DEBUG: Log filtered options
-  logger.info(
+  // DEBUG: Log filtered options (only in debug mode)
+  logger.debug(
     `DEBUG STREAM: Options filtering for model "${modelDetails.name}":`,
-    JSON.stringify(
-      {
-        isReasoning,
-        originalOptions: options || {},
-        filteredOptions,
-        originalOptionsKeys: options ? Object.keys(options) : [],
-        filteredOptionsKeys: Object.keys(filteredOptions),
-        removedParams: options ? Object.keys(options).filter((key) => !(key in filteredOptions)) : [],
-      },
-      null,
-      2,
-    ),
+    {
+      isReasoning,
+      originalOptionsKeys: options ? Object.keys(options) : [],
+      filteredOptionsKeys: Object.keys(filteredOptions),
+      removedParams: options ? Object.keys(options).filter((key) => !(key in filteredOptions)) : [],
+    },
   );
 
   const streamParams = {
@@ -289,22 +283,15 @@ export async function streamText(props: {
     ...(isReasoning ? { temperature: 1 } : {}),
   };
 
-  // DEBUG: Log final streaming parameters
-  logger.info(
+  // DEBUG: Log final streaming parameters (only in debug mode)
+  logger.debug(
     `DEBUG STREAM: Final streaming params for model "${modelDetails.name}":`,
-    JSON.stringify(
-      {
-        hasTemperature: 'temperature' in streamParams,
-        hasMaxTokens: 'maxTokens' in streamParams,
-        hasMaxCompletionTokens: 'maxCompletionTokens' in streamParams,
-        paramKeys: Object.keys(streamParams).filter((key) => !['model', 'messages', 'system'].includes(key)),
-        streamParams: Object.fromEntries(
-          Object.entries(streamParams).filter(([key]) => !['model', 'messages', 'system'].includes(key)),
-        ),
-      },
-      null,
-      2,
-    ),
+    {
+      hasTemperature: 'temperature' in streamParams,
+      hasMaxTokens: 'maxTokens' in streamParams,
+      hasMaxCompletionTokens: 'maxCompletionTokens' in streamParams,
+      paramKeys: Object.keys(streamParams).filter((key) => !['model', 'messages', 'system'].includes(key)),
+    },
   );
 
   return await _streamText(streamParams);

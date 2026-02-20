@@ -70,13 +70,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
   return (
     <div
       className={classNames(
-        'relative bg-smack-elements-background-depth-2 backdrop-blur p-3 rounded-lg border border-smack-elements-borderColor relative w-full max-w-chat mx-auto z-prompt',
-
-        /*
-         * {
-         *   'sticky bottom-2': chatStarted,
-         * },
-         */
+        'relative bg-smack-elements-background-depth-2 backdrop-blur-md p-4 rounded-xl border border-smack-elements-borderColor relative w-full max-w-chat mx-auto z-prompt shadow-xl shadow-black/5',
       )}
     >
       <svg className={classNames(styles.PromptEffectContainer)}>
@@ -105,8 +99,9 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         <rect className={classNames(styles.PromptEffectLine)} pathLength="100" strokeLinecap="round"></rect>
         <rect className={classNames(styles.PromptShine)} x="48" y="24" width="70" height="1"></rect>
       </svg>
-      <div className="mb-2 text-sm text-smack-elements-textSecondary">
-        Model locked to Gemini (production).
+      <div className="mb-3 text-sm text-smack-elements-textSecondary flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span>Model locked to Gemini (production).</span>
       </div>
       <FilePreview
         files={props.uploadedFiles}
@@ -143,22 +138,25 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
         </div>
       )}
       <div
-        className={classNames('relative shadow-xs border border-smack-elements-borderColor backdrop-blur rounded-lg')}
+        className={classNames('relative shadow-lg border border-smack-elements-borderColor backdrop-blur rounded-xl overflow-hidden transition-all duration-200 hover:border-accent/50 hover:shadow-accent/10', {
+          'border-accent/50 shadow-accent/20': props.input.length > 0 || props.isStreaming || props.uploadedFiles.length > 0
+        })}
       >
         <textarea
           ref={props.textareaRef}
           className={classNames(
-            'w-full pl-4 pt-4 pr-16 outline-none resize-none text-smack-elements-textPrimary placeholder-smack-elements-textTertiary bg-transparent text-sm',
+            'w-full pl-5 pt-5 pr-16 outline-none resize-none text-smack-elements-textPrimary placeholder-smack-elements-textTertiary bg-transparent text-base leading-relaxed',
             'transition-all duration-200',
-            'hover:border-smack-elements-focus',
+            'focus:border-accent/50 focus:ring-1 focus:ring-accent/20',
+            'hover:border-smack-elements-borderColor/80',
           )}
           onDragEnter={(e) => {
             e.preventDefault();
-            e.currentTarget.style.border = '2px solid #1488fc';
+            e.currentTarget.style.border = '2px solid var(--accent-color)';
           }}
           onDragOver={(e) => {
             e.preventDefault();
-            e.currentTarget.style.border = '2px solid #1488fc';
+            e.currentTarget.style.border = '2px solid var(--accent-color)';
           }}
           onDragLeave={(e) => {
             e.preventDefault();
@@ -234,22 +232,22 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             />
           )}
         </ClientOnly>
-        <div className="flex justify-between items-center text-sm p-4 pt-2">
+        <div className="flex justify-between items-center text-sm p-4 pt-3 border-t border-smack-elements-borderColor/50">
           <div className="flex gap-1 items-center">
             <ColorSchemeDialog designScheme={props.designScheme} setDesignScheme={props.setDesignScheme} />
             <McpTools />
             <IconButton
               title="Upload file"
-              className={classNames('transition-all', isMobileView && 'p-2')}
+              className={classNames('transition-all duration-200 hover:bg-accent/10', isMobileView && 'p-2')}
               onClick={() => props.handleFileUpload()}
             >
               <div className="i-ph:paperclip text-xl"></div>
-              {isMobileView && <span className="ml-2">Upload</span>}
+              {isMobileView ? <span className="ml-2">Upload</span> : null}
             </IconButton>
             <IconButton
               title="Enhance prompt"
               disabled={props.input.length === 0 || props.enhancingPrompt}
-              className={classNames('transition-all', props.enhancingPrompt ? 'opacity-100' : '')}
+              className={classNames('transition-all duration-200 hover:bg-accent/10', props.enhancingPrompt ? 'opacity-100' : '')}
               onClick={() => {
                 props.enhancePrompt?.();
                 toast.success('Prompt enhanced!');
@@ -272,42 +270,33 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               <IconButton
                 title="Discuss"
                 className={classNames(
-                  'transition-all flex items-center gap-1 px-1.5',
+                  'transition-all duration-200 flex items-center gap-1 px-2 rounded-lg',
                   props.chatMode === 'discuss'
-                    ? '!bg-smack-elements-item-backgroundAccent !text-smack-elements-item-contentAccent'
-                    : 'bg-smack-elements-item-backgroundDefault text-smack-elements-item-contentDefault',
+                    ? '!bg-accent !text-white shadow-lg'
+                    : 'hover:bg-accent/10',
                 )}
                 onClick={() => {
                   props.setChatMode?.(props.chatMode === 'discuss' ? 'build' : 'discuss');
                 }}
               >
                 <div className={`i-ph:chats text-xl`} />
-                {props.chatMode === 'discuss' ? <span>Discuss</span> : <span />}
+                {props.chatMode === 'discuss' ? <span className="text-xs font-medium">Discuss</span> : <span />}
               </IconButton>
             )}
-            <IconButton
-              title="Model Settings"
-              className={classNames('transition-all flex items-center gap-1', {
-                'bg-smack-elements-item-backgroundAccent text-smack-elements-item-contentAccent':
-                  props.isModelSettingsCollapsed,
-                'bg-smack-elements-item-backgroundDefault text-smack-elements-item-contentDefault':
-                  !props.isModelSettingsCollapsed,
-              })}
-              onClick={() => props.setIsModelSettingsCollapsed(!props.isModelSettingsCollapsed)}
-              disabled={!props.providerList || props.providerList.length === 0}
-            >
-              <div className={`i-ph:caret-${props.isModelSettingsCollapsed ? 'right' : 'down'} text-lg`} />
-              {props.isModelSettingsCollapsed ? <span className="text-xs">{props.model}</span> : <span />}
-            </IconButton>
           </div>
           {props.input.length > 3 ? (
-            <div className="text-xs text-smack-elements-textTertiary">
-              Use <kbd className="kdb px-1.5 py-0.5 rounded bg-smack-elements-background-depth-2">Shift</kbd> +{' '}
-              <kbd className="kdb px-1.5 py-0.5 rounded bg-smack-elements-background-depth-2">Return</kbd> a new line
+            <div className="hidden sm:flex items-center gap-2 text-xs text-smack-elements-textTertiary">
+              <span>Use</span>
+              <kbd className="px-2 py-1 rounded-md bg-smack-elements-background-depth-3 border border-smack-elements-borderColor text-xs font-mono">Shift</kbd>
+              <span>+</span>
+              <kbd className="px-2 py-1 rounded-md bg-smack-elements-background-depth-3 border border-smack-elements-borderColor text-xs font-mono">Return</kbd>
+              <span>for new line</span>
             </div>
           ) : null}
-          <SupabaseConnection />
-          <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
+          <div className="flex items-center gap-2">
+            <SupabaseConnection />
+            <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
+          </div>
         </div>
       </div>
     </div>

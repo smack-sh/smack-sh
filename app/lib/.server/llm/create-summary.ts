@@ -1,4 +1,4 @@
-import { generateText, type CoreTool, type GenerateTextResult, type Message } from 'ai';
+import { generateText, type Tool, type GenerateTextResult, type UIMessage as Message } from 'ai';
 import type { IProviderSetting } from '~/types/model';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROVIDER_LIST } from '~/utils/constants';
 import { extractCurrentContext, extractPropertiesFromMessage, simplifysmackActions } from './utils';
@@ -14,7 +14,7 @@ export async function createSummary(props: {
   providerSettings?: Record<string, IProviderSetting>;
   promptId?: string;
   contextOptimization?: boolean;
-  onFinish?: (resp: GenerateTextResult<Record<string, CoreTool<any, any>>, never>) => void;
+  onFinish?: (resp: GenerateTextResult<Record<string, Tool<any, any>>, never>) => void;
 }) {
   const { messages, env: serverEnv, apiKeys, providerSettings, onFinish } = props;
   let currentModel = DEFAULT_MODEL;
@@ -26,12 +26,12 @@ export async function createSummary(props: {
       currentProvider = provider;
 
       return { ...message, content };
-    } else if (message.role == 'assistant') {
+    } else if (message.role === 'assistant') {
       let content = message.content;
 
       content = simplifysmackActions(content);
-      content = content.replace(/<div class=\\"__smackThought__\\">.*?<\/div>/s, '');
-      content = content.replace(/<think>.*?<\/think>/s, '');
+      content = content.replace(/<div class=\\"__smackThought__\\">[\s\S]*?<\/div>/gs, '');
+      content = content.replace(/<think>[\s\S]*?<\/think>/gs, '');
 
       return { ...message, content };
     }
@@ -94,10 +94,7 @@ ${summary.summary}`;
 
   logger.debug('Sliced Messages:', slicedMessages.length);
 
-  const extractTextContent = (message: Message) =>
-    Array.isArray(message.content)
-      ? (message.content.find((item) => item.type === 'text')?.text as string) || ''
-      : message.content;
+  const extractTextContent = (message: Message) => message.content;
 
   // select files from the list of code file from the project that might be useful for the current request from the user
   const resp = await generateText({

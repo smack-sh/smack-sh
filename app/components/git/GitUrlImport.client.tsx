@@ -1,5 +1,5 @@
 import { useSearchParams } from '@remix-run/react';
-import { generateId, type Message } from 'ai';
+import { generateId, type UIMessage as Message } from 'ai';
 import ignore from 'ignore';
 import { useEffect, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
@@ -24,7 +24,6 @@ const IGNORE_PATTERNS = [
   '.next/**',
   'coverage/**',
   '.cache/**',
-  '.vscode/**',
   '.idea/**',
   '**/*.log',
   '**/.DS_Store',
@@ -44,7 +43,7 @@ export function GitUrlImport() {
   const [loading, setLoading] = useState(true);
 
   const importRepo = async (repoUrl?: string) => {
-    if (!gitReady && !historyReady) {
+    if (!gitReady || !historyReady) {
       return;
     }
 
@@ -85,6 +84,22 @@ ${escapesmackTags(file.content)}
   )
   .join('\n')}
 </smackArtifact>`,
+            parts: [
+              {
+                type: 'text',
+                text: `Cloning the repo ${repoUrl} into ${workdir}
+<smackArtifact id="imported-files" title="Git Cloned Files"  type="bundled">
+${fileContents
+  .map(
+    (file) =>
+      `<smackAction type="file" filePath="${file.path}">
+${escapesmackTags(file.content)}
+</smackAction>`,
+  )
+  .join('\n')}
+</smackArtifact>`,
+              },
+            ],
             id: generateId(),
             createdAt: new Date(),
           };
@@ -96,6 +111,7 @@ ${escapesmackTags(file.content)}
               role: 'user',
               id: generateId(),
               content: 'Setup the codebase and Start the application',
+              parts: [{ type: 'text', text: 'Setup the codebase and Start the application' }],
             });
             messages.push(commandsMessage);
           }

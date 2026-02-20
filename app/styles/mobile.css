@@ -1,8 +1,12 @@
+/* Mobile-first responsive design enhancements */
+
 /* Increase tap targets for buttons and interactive elements */
 button,
 [role="button"],
 a {
   -webkit-tap-highlight-color: transparent;
+  min-height: 44px; /* iOS recommended touch target size */
+  min-width: 44px;
 }
 
 /* Larger spacing for chat messages */
@@ -10,12 +14,107 @@ a {
   padding: 1rem;
 }
 
-/* Hide scrollbars on mobile where they are not needed */
-.modern-scrollbar::-webkit-scrollbar {
-  display: none;
+/* Better mobile scrolling */
+.modern-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-.modern-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+.modern-scrollbar::-webkit-scrollbar {
+  display: none; /* Hide scrollbars on mobile */
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Better typography on mobile */
+  html {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  /* Improve touch targets */
+  button, .btn {
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+  
+  /* Better mobile layout spacing */
+  .mobile-padding {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Mobile-friendly chat input */
+  .chat-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+    padding: 12px 16px;
+  }
+  
+  /* Better mobile header */
+  .mobile-header {
+    height: 60px;
+    padding: 0 16px;
+  }
+  
+  /* Mobile sidebar adjustments */
+  .mobile-sidebar {
+    width: 280px;
+  }
+  
+  /* Better mobile cards */
+  .mobile-card {
+    margin: 8px;
+    border-radius: 12px;
+    padding: 16px;
+  }
+}
+
+/* Safe area support for devices with notches */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .mobile-safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .mobile-safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Landscape orientation improvements */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chat-container {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  
+  .mobile-header {
+    height: 48px;
+  }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Sharper borders on retina displays */
+  .retina-border {
+    border-width: 0.5px;
+  }
+}
+
+/* Dark mode mobile improvements */
+@media (prefers-color-scheme: dark) {
+  /* Ensure proper contrast on mobile */
+  .mobile-text {
+    color: #ffffff;
+  }
+  
+  .mobile-text-secondary {
+    color: #a1a1aa;
+  }
 }

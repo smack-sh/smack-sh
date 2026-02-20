@@ -16,7 +16,7 @@ export default function ChatIndex() {
     <div className="flex flex-col h-full w-full bg-smack-elements-background-depth-1">
       <BackgroundRays />
       <Header />
-      <ClientOnly fallback={<BaseChat />}>{() => <Chat />}</ClientOnly>
+      <ClientOnly fallback={<BaseChat />}>{function() { return <Chat /> }}</ClientOnly>
     </div>
   );
 }

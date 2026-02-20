@@ -27,7 +27,7 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
-    logger.info('handleConnect called with token:', token ? 'token provided' : 'no token', 'tokenType:', tokenType);
+    logger.info('handleConnect called with token:', (Boolean(token)) ? 'token provided' : 'no token', 'tokenType:', tokenType);
 
     if (!token.trim()) {
       logger.warn('No token provided, returning early');

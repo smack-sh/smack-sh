@@ -27,7 +27,7 @@ export const DialogButton = memo(function DialogButton({ type, children, onClick
           ? 'bg-accent text-white hover:bg-accent-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5'
           : type === 'secondary'
             ? 'bg-smack-elements-background-depth-2 text-smack-elements-textPrimary hover:bg-smack-elements-background-depth-3 border border-smack-elements-borderColor'
-            : 'bg-transparent text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20',
+            : 'bg-transparent text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20'
       )}
       onClick={onClick}
       disabled={disabled}

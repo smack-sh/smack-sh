@@ -14,8 +14,9 @@ const logger = createScopedLogger('ChatHistory');
 
 const MessageSchema = z.object({
   id: z.string(),
-  role: z.enum(['user', 'assistant', 'system', 'function', 'data', 'tool']),
-  content: z.union([z.string(), z.array(z.any())]),
+  role: z.enum(['user', 'assistant', 'system', 'data', 'tool']),
+  parts: z.array(z.any()),
+  content: z.string().optional(),
   createdAt: z.date().optional(),
   annotations: z.array(z.any()).optional(),
 });
@@ -124,7 +125,22 @@ export async function getAll(db: IDBDatabase): Promise<ChatHistoryItem[]> {
     const store = transaction.objectStore('chats');
     const request = store.getAll();
 
-    request.onsuccess = () => resolve(request.result as ChatHistoryItem[]);
+    request.onsuccess = async () => {
+      const results: ChatHistoryItem[] = [];
+      const items = request.result;
+
+      for (const item of items) {
+        const result = ChatHistoryItemSchema.safeParse(item);
+        if (result.success) {
+          results.push(result.data);
+        } else {
+          // Quarantine corrupted item
+          await quarantineCorruptedChat(db, item.id, item, result.error);
+        }
+      }
+
+      resolve(results);
+    };
     request.onerror = () => reject(request.error);
   });
 }

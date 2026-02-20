@@ -1,6 +1,6 @@
 /**
  * AI SDK v5 Compatibility Layer
- * 
+ *
  * This file provides type compatibility between the old AI SDK Message format
  * and the new UIMessage format that uses parts instead of content.
  */
@@ -22,15 +22,15 @@ export function getMessageContent(message: AIUIMessage): string {
   if ('content' in message) {
     return (message as Message).content;
   }
-  
+
   // Extract text from parts
   if (message.parts) {
     return message.parts
       .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-      .map(part => part.text)
+      .map((part) => part.text)
       .join('\n');
   }
-  
+
   return '';
 }
 

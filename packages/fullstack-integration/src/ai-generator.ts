@@ -1,7 +1,4 @@
 import { z } from 'zod';
-import type { PrismaClient } from '@prisma/client';
-import express from 'express';
-import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
 
 /**

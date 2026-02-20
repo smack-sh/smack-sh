@@ -19,6 +19,7 @@ export {
   getAnalytics,
   resetUsage,
   getUsageConfig,
+  setUsageStorage,
   type UserUsage,
   type RateLimitData,
   type UsageAnalytics,

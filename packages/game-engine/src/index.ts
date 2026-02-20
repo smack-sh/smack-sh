@@ -1,5 +1,7 @@
-export { PhaserGameBuilder } from './phaser-builder';
+import { PhaserGameBuilder } from './phaser-builder';
+
+export { PhaserGameBuilder };
 
 export default {
-  PhaserGameBuilder
+  PhaserGameBuilder,
 };

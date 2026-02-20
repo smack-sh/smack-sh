@@ -5,7 +5,7 @@ const logger = createScopedLogger('PythonUsageTracker');
 /**
  * Storage interface for compatibility between server and client
  */
-interface StorageInterface {
+export interface StorageInterface {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
@@ -16,21 +16,39 @@ interface StorageInterface {
  */
 class ClientStorage implements StorageInterface {
   getItem(key: string): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(key);
+    if (typeof window === 'undefined') {
+      return null;
     }
-    return null;
+
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      logger.error('Failed to read from localStorage:', error);
+      return null;
+    }
   }
 
   setItem(key: string, value: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, value);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (error) {
+      logger.error('Failed to write to localStorage:', error);
     }
   }
 
   removeItem(key: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(key);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.removeItem(key);
+    } catch (error) {
+      logger.error('Failed to remove from localStorage:', error);
     }
   }
 }
@@ -59,13 +77,24 @@ class ServerStorage implements StorageInterface {
  */
 function createStorage(): StorageInterface {
   if (typeof window !== 'undefined') {
-    return new ClientStorage();
+    try {
+      if (typeof window.localStorage !== 'undefined') {
+        return new ClientStorage();
+      }
+      logger.warn('localStorage is unavailable; falling back to server storage.');
+    } catch (error) {
+      logger.warn('Unable to access localStorage; falling back to server storage.', error);
+    }
   }
   return new ServerStorage();
 }
 
 // Global storage instance
 let storageInstance: StorageInterface | null = null;
+
+export function setUsageStorage(storage: StorageInterface | null): void {
+  storageInstance = storage;
+}
 
 function getStorage(): StorageInterface {
   if (!storageInstance) {
@@ -200,12 +229,12 @@ export function checkRateLimit(userId: string): RateLimitResult {
   } catch (error) {
     logger.error('Error checking rate limit:', error);
 
-    // Fail open - allow request if we can't check rate limit
+    // Fail closed to avoid unlimited requests when storage fails
     return {
-      allowed: true,
-      remaining: USAGE_CONFIG.RATE_LIMIT_REQUESTS,
+      allowed: false,
+      remaining: 0,
       resetTime: now + USAGE_CONFIG.RATE_LIMIT_WINDOW_MS,
-      currentUsage: 0,
+      currentUsage: USAGE_CONFIG.RATE_LIMIT_REQUESTS,
     };
   }
 }

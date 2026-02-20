@@ -21,6 +21,24 @@ body {
   --accent-color: rgba(255, 125, 125, var(--gradient-opacity));
 }
 
+/* Enhanced focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--smack-elements-borderColorActive);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better selection */
+::selection {
+  background-color: rgba(255, 95, 95, 0.2);
+  color: inherit;
+}
+
+/* Modern scrollbar */
 .modern-scrollbar {
   overflow: auto;
   scrollbar-width: thin;
@@ -28,8 +46,8 @@ body {
 }
 
 .modern-scrollbar::-webkit-scrollbar {
-  width: 2px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 .modern-scrollbar::-webkit-scrollbar-track {
@@ -58,4 +76,33 @@ body {
 
 .modern-scrollbar-invert {
   scrollbar-color: color-mix(in srgb, var(--smack-elements-textPrimary), transparent 50%) transparent;
+}
+
+/* Improved form elements */
+input, textarea, select {
+  font-family: inherit;
+}
+
+textarea {
+  resize: none;
+}
+
+/* Better link styling */
+a {
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+/* Improved button interactions */
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Better kbd styling */
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
 }

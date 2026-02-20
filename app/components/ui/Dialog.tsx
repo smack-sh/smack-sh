@@ -18,16 +18,16 @@ interface DialogButtonProps {
   disabled?: boolean;
 }
 
-export const DialogButton = memo(({ type, children, onClick, disabled }: DialogButtonProps) => {
+export const DialogButton = memo(function DialogButton({ type, children, onClick, disabled }: DialogButtonProps) {
   return (
     <button
       className={classNames(
-        'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors',
+        'inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200',
         type === 'primary'
-          ? 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-500 dark:hover:bg-red-600'
+          ? 'bg-accent text-white hover:bg-accent-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5'
           : type === 'secondary'
-            ? 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-            : 'bg-transparent text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10',
+            ? 'bg-smack-elements-background-depth-2 text-smack-elements-textPrimary hover:bg-smack-elements-background-depth-3 border border-smack-elements-borderColor'
+            : 'bg-transparent text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20',
       )}
       onClick={onClick}
       disabled={disabled}
@@ -100,12 +100,12 @@ interface DialogProps {
   onBackdrop?: () => void;
 }
 
-export const Dialog = memo(({ children, className, showCloseButton = true, onClose, onBackdrop }: DialogProps) => {
+export const Dialog = memo(function Dialog({ children, className, showCloseButton = true, onClose, onBackdrop }: DialogProps) {
   return (
     <RadixDialog.Portal>
       <RadixDialog.Overlay asChild>
         <motion.div
-          className={classNames('fixed inset-0 z-[9999] bg-black/70 dark:bg-black/80 backdrop-blur-sm')}
+          className={classNames('fixed inset-0 z-[9999] bg-black/60 dark:bg-black/80 backdrop-blur-md')}
           initial="closed"
           animate="open"
           exit="closed"
@@ -116,7 +116,7 @@ export const Dialog = memo(({ children, className, showCloseButton = true, onClo
       <RadixDialog.Content asChild>
         <motion.div
           className={classNames(
-            'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-950 rounded-lg shadow-xl border border-smack-elements-borderColor z-[9999] w-[520px] focus:outline-none',
+            'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-smack-elements-background-depth-2 rounded-2xl shadow-2xl border border-smack-elements-borderColor z-[9999] w-[520px] max-w-[95vw] focus:outline-none',
             className,
           )}
           initial="closed"
@@ -130,7 +130,7 @@ export const Dialog = memo(({ children, className, showCloseButton = true, onClo
               <RadixDialog.Close asChild onClick={onClose}>
                 <IconButton
                   icon="i-ph:x"
-                  className="absolute top-3 right-3 text-smack-elements-textTertiary hover:text-smack-elements-textSecondary"
+                  className="absolute top-4 right-4 text-smack-elements-textTertiary hover:text-smack-elements-textSecondary hover:bg-smack-elements-background-depth-3 transition-all"
                 />
               </RadixDialog.Close>
             )}
@@ -208,10 +208,10 @@ export function ConfirmationDialog({
   return (
     <RadixDialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog showCloseButton={false}>
-        <div className="p-6 bg-white dark:bg-gray-950 relative z-10">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="mb-4">{description}</DialogDescription>
-          <div className="flex justify-end space-x-2">
+        <div className="p-8 bg-smack-elements-background-depth-2 relative z-10">
+          <DialogTitle className="text-xl">{title}</DialogTitle>
+          <DialogDescription className="mt-3 mb-6 text-base leading-relaxed">{description}</DialogDescription>
+          <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose} disabled={isLoading}>
               {cancelLabel}
             </Button>
@@ -219,11 +219,12 @@ export function ConfirmationDialog({
               variant={variant}
               onClick={onConfirm}
               disabled={isLoading}
-              className={
-                variant === 'destructive'
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'bg-smack-elements-item-backgroundAccent text-smack-elements-item-contentAccent hover:bg-smack-elements-button-primary-backgroundHover'
-              }
+              className={function() {
+                if (variant === 'destructive') {
+                  return 'bg-red-500 text-white hover:bg-red-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5';
+                }
+                return 'bg-accent text-white hover:bg-accent-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5';
+              }()}
             >
               {isLoading ? (
                 <>
@@ -306,28 +307,33 @@ export function SelectionDialog({
   const [selectAll, setSelectAll] = useState(false);
 
   // Reset selected items when dialog opens
-  useEffect(() => {
+  useEffect(function() {
     if (isOpen) {
       setSelectedItems([]);
       setSelectAll(false);
     }
   }, [isOpen]);
 
-  const handleToggleItem = (id: string) => {
-    setSelectedItems((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+  const handleToggleItem = function(id: string) {
+    setSelectedItems(function(prev) {
+      if (prev.includes(id)) {
+        return prev.filter(function(itemId) { return itemId !== id });
+      }
+      return [...prev, id];
+    });
   };
 
-  const handleSelectAll = () => {
+  const handleSelectAll = function() {
     if (selectedItems.length === items.length) {
       setSelectedItems([]);
       setSelectAll(false);
     } else {
-      setSelectedItems(items.map((item) => item.id));
+      setSelectedItems(items.map(function(item) { return item.id }));
       setSelectAll(true);
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = function() {
     onConfirm(selectedItems);
     onClose();
   };
@@ -339,16 +345,16 @@ export function SelectionDialog({
   );
 
   // Render each item in the virtualized list
-  const ItemRenderer = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+  const ItemRenderer = function({ index, style }: { index: number; style: React.CSSProperties }) {
     const item = items[index];
     return (
       <div
         key={item.id}
         className={classNames(
-          'flex items-start space-x-3 p-2 rounded-md transition-colors',
+          'flex items-start space-x-3 p-3 rounded-lg transition-all duration-200 cursor-pointer',
           selectedItems.includes(item.id)
-            ? 'bg-smack-elements-item-backgroundAccent'
-            : 'bg-smack-elements-bg-depth-2 hover:bg-smack-elements-item-backgroundActive',
+            ? 'bg-accent/10 border border-accent/30'
+            : 'bg-smack-elements-bg-depth-2 hover:bg-smack-elements-item-backgroundActive border border-transparent hover:border-smack-elements-borderColor/50',
         )}
         style={{
           ...style,
@@ -359,7 +365,7 @@ export function SelectionDialog({
         <Checkbox
           id={`item-${item.id}`}
           checked={selectedItems.includes(item.id)}
-          onCheckedChange={() => handleToggleItem(item.id)}
+          onCheckedChange={function() { return handleToggleItem(item.id) }}
         />
         <div className="grid gap-1.5 leading-none">
           <Label
@@ -367,7 +373,7 @@ export function SelectionDialog({
             className={classNames(
               'text-sm font-medium cursor-pointer',
               selectedItems.includes(item.id)
-                ? 'text-smack-elements-item-contentAccent'
+                ? 'text-accent'
                 : 'text-smack-elements-textPrimary',
             )}
           >
@@ -382,15 +388,15 @@ export function SelectionDialog({
   return (
     <RadixDialog.Root open={isOpen} onOpenChange={onClose}>
       <Dialog showCloseButton={false}>
-        <div className="p-6 bg-white dark:bg-gray-950 relative z-10">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="mt-2 mb-4">
+        <div className="p-8 bg-smack-elements-background-depth-2 relative z-10">
+          <DialogTitle className="text-xl">{title}</DialogTitle>
+          <DialogDescription className="mt-3 mb-5">
             Select the items you want to include and click{' '}
-            <span className="text-smack-elements-item-contentAccent font-medium">{confirmLabel}</span>.
+            <span className="text-accent font-semibold">{confirmLabel}</span>.
           </DialogDescription>
 
           <div className="py-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <span className="text-sm font-medium text-smack-elements-textSecondary">
                 {selectedItems.length} of {items.length} selected
               </span>
@@ -398,14 +404,14 @@ export function SelectionDialog({
                 variant="ghost"
                 size="sm"
                 onClick={handleSelectAll}
-                className="text-xs h-8 px-2 text-smack-elements-textPrimary hover:text-smack-elements-item-contentAccent hover:bg-smack-elements-item-backgroundAccent bg-smack-elements-bg-depth-2 dark:bg-transparent"
+                className="text-sm h-9 px-4 text-smack-elements-textPrimary hover:text-accent hover:bg-accent/10"
               >
                 {selectAll ? 'Deselect All' : 'Select All'}
               </Button>
             </div>
 
             <div
-              className="pr-2 border rounded-md border-smack-elements-borderColor bg-smack-elements-bg-depth-2"
+              className="pr-3 border rounded-xl border-smack-elements-borderColor bg-smack-elements-bg-depth-1"
               style={{
                 maxHeight,
               }}
@@ -415,29 +421,29 @@ export function SelectionDialog({
                   height={listHeight}
                   width="100%"
                   itemCount={items.length}
-                  itemSize={60}
-                  className="scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-smack-elements-bg-depth-3"
+                  itemSize={70}
+                  className="scrollbar-thin scrollbar-thumb-rounded-lg"
                 >
                   {ItemRenderer}
                 </FixedSizeList>
               ) : (
-                <div className="text-center py-4 text-sm text-smack-elements-textTertiary">No items to display</div>
+                <div className="text-center py-8 text-sm text-smack-elements-textTertiary">No items to display</div>
               )}
             </div>
           </div>
 
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between mt-6 pt-4 border-t border-smack-elements-borderColor/50">
             <Button
               variant="outline"
               onClick={onClose}
-              className="border-smack-elements-borderColor text-smack-elements-textPrimary hover:bg-smack-elements-item-backgroundActive"
+              className="px-6 py-3"
             >
               Cancel
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={selectedItems.length === 0}
-              className="bg-accent-500 text-white hover:bg-accent-600 disabled:opacity-50 disabled:pointer-events-none"
+              className="px-6 py-3 bg-accent text-white hover:bg-accent-600 shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none disabled:hover:translate-y-0"
             >
               {confirmLabel}
             </Button>

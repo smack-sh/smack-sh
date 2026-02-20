@@ -125,13 +125,16 @@ export function createCommandsMessage(commands: ProjectCommands): Message | null
 `;
   }
 
-  return {
-    role: 'assistant',
-    content: `
+  const content = `
 ${commands.followupMessage ? `\n\n${commands.followupMessage}` : ''}
 <smackArtifact id="project-setup" title="Project Setup">
 ${commandString}
-</smackArtifact>`,
+</smackArtifact>`;
+
+  return {
+    role: 'assistant',
+    content,
+    parts: [{ type: 'text', text: content }],
     id: generateId(),
     createdAt: new Date(),
   };

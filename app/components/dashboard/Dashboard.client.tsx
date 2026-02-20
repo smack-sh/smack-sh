@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Chart as ChartJS, 
@@ -104,22 +104,52 @@ const recentActivity = [
   { id: 5, type: 'code', message: 'Code optimized: Performance improvements', time: '3 hours ago', icon: HiOutlineCode },
 ];
 
+// Dataset generators based on timeRange
+const getChartDataForRange = (timeRange: '7d' | '30d' | '90d') => {
+  const baseData = {
+    '7d': {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      chats: [65, 78, 90, 81, 95, 110, 125],
+      messages: [340, 420, 510, 480, 560, 620, 710],
+      codeGen: [120, 190, 150, 220, 180, 240, 280],
+    },
+    '30d': {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      chats: [520, 680, 750, 890],
+      messages: [3200, 4100, 4800, 5600],
+      codeGen: [1100, 1500, 1800, 2200],
+    },
+    '90d': {
+      labels: ['Month 1', 'Month 2', 'Month 3'],
+      chats: [2100, 2800, 3500],
+      messages: [14500, 18200, 22000],
+      codeGen: [5200, 6800, 8500],
+    },
+  };
+  return baseData[timeRange];
+};
+
+const getLanguageDataForRange = (timeRange: '7d' | '30d' | '90d') => {
+  const data = {
+    '7d': [35, 25, 20, 10, 5, 5],
+    '30d': [38, 24, 18, 12, 4, 4],
+    '90d': [40, 22, 17, 13, 4, 4],
+  };
+  return data[timeRange];
+};
+
 export function Dashboard() {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d');
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  const rangeData = useMemo(() => getChartDataForRange(timeRange), [timeRange]);
+  const languageDistribution = useMemo(() => getLanguageDataForRange(timeRange), [timeRange]);
 
-  const chartData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  const chartData = useMemo(() => ({
+    labels: rangeData.labels,
     datasets: [
       {
         label: 'Chats',
-        data: [65, 78, 90, 81, 95, 110, 125],
+        data: rangeData.chats,
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         fill: true,
@@ -127,20 +157,20 @@ export function Dashboard() {
       },
       {
         label: 'Messages',
-        data: [340, 420, 510, 480, 560, 620, 710],
+        data: rangeData.messages,
         borderColor: 'rgb(16, 185, 129)',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4,
       },
     ],
-  };
+  }), [rangeData]);
 
-  const languageData = {
+  const languageData = useMemo(() => ({
     labels: ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust', 'Other'],
     datasets: [
       {
-        data: [35, 25, 20, 10, 5, 5],
+        data: languageDistribution,
         backgroundColor: [
           'rgba(59, 130, 246, 0.8)',
           'rgba(251, 191, 36, 0.8)',
@@ -152,18 +182,30 @@ export function Dashboard() {
         borderWidth: 0,
       },
     ],
-  };
+  }), [languageDistribution]);
 
-  const barChartData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  const barChartData = useMemo(() => ({
+    labels: rangeData.labels,
     datasets: [
       {
         label: 'Code Generated (KB)',
-        data: [120, 190, 150, 220, 180, 240, 280],
+        data: rangeData.codeGen,
         backgroundColor: 'rgba(139, 92, 246, 0.8)',
         borderRadius: 8,
       },
     ],
+  }), [rangeData]);
+
+  const handleSettingsClick = () => {
+    alert('Settings - Not implemented yet');
+  };
+
+  const handleNewProjectClick = () => {
+    alert('New Project - Not implemented yet');
+  };
+
+  const handleViewAllProjectsClick = () => {
+    alert('View All Projects - Not implemented yet');
   };
 
   return (
@@ -190,7 +232,10 @@ export function Dashboard() {
               <option value="30d">Last 30 days</option>
               <option value="90d">Last 90 days</option>
             </select>
-            <button className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors">
+            <button
+              onClick={handleSettingsClick}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
+            >
               <HiOutlineCog className="w-4 h-4" />
               Settings
             </button>
@@ -369,10 +414,16 @@ export function Dashboard() {
             <p className="mt-2 text-purple-100">Create a new project or continue where you left off</p>
           </div>
           <div className="flex gap-3">
-            <button className="rounded-lg bg-white px-6 py-3 font-semibold text-purple-600 hover:bg-purple-50 transition-colors">
+            <button
+              onClick={handleNewProjectClick}
+              className="rounded-lg bg-white px-6 py-3 font-semibold text-purple-600 hover:bg-purple-50 transition-colors"
+            >
               New Project
             </button>
-            <button className="rounded-lg border-2 border-white px-6 py-3 font-semibold text-white hover:bg-white/10 transition-colors">
+            <button
+              onClick={handleViewAllProjectsClick}
+              className="rounded-lg border-2 border-white px-6 py-3 font-semibold text-white hover:bg-white/10 transition-colors"
+            >
               View All Projects
             </button>
           </div>

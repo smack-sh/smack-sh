@@ -1,7 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineBell, HiOutlineCheck, HiOutlineX, HiOutlineInformationCircle, HiOutlineExclamation, HiOutlineCheckCircle, HiOutlineXCircle } from 'react-icons/hi';
 import { classNames } from '~/utils/classNames';
+
+// Safe ID generation with fallback for environments without crypto
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 export interface Notification {
   id: string;
@@ -55,28 +63,31 @@ export function NotificationCenter({ notifications, onDismiss }: NotificationCen
 }
 
 function NotificationItem({ notification, onDismiss }: { notification: Notification; onDismiss: () => void }) {
-  const [isVisible, setIsVisible] = useState(true);
   const Icon = icons[notification.type];
+  const onDismissRef = useRef(onDismiss);
+
+  // Keep the ref in sync with the latest callback
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  });
 
   useEffect(() => {
     if (notification.duration) {
       const timer = setTimeout(() => {
-        setIsVisible(false);
-        setTimeout(onDismiss, 300);
+        onDismissRef.current();
       }, notification.duration);
       return () => clearTimeout(timer);
     }
-  }, [notification.duration, onDismiss]);
+  }, [notification.duration]);
 
   const handleDismiss = () => {
-    setIsVisible(false);
-    setTimeout(onDismiss, 300);
+    onDismissRef.current();
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, x: 100, scale: 0.9 }}
-      animate={{ opacity: isVisible ? 1 : 0, x: isVisible ? 0 : 100, scale: isVisible ? 1 : 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 100, scale: 0.9 }}
       className={classNames(
         'rounded-lg border p-4 shadow-lg backdrop-blur-sm',
@@ -92,6 +103,7 @@ function NotificationItem({ notification, onDismiss }: { notification: Notificat
         {notification.dismissible !== false && (
           <button
             onClick={handleDismiss}
+            aria-label="Dismiss notification"
             className="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
           >
             <HiOutlineX className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -105,27 +117,24 @@ function NotificationItem({ notification, onDismiss }: { notification: Notificat
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const addNotification = (notification: Omit<Notification, 'id'>) => {
-    const id = Date.now().toString();
+  const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
+    const id = generateId();
     setNotifications((prev) => [...prev, { ...notification, id }]);
     return id;
-  };
+  }, []);
 
-  const dismissNotification = (id: string) => {
+  const dismissNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-  };
+  }, []);
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     setNotifications([]);
-  };
+  }, []);
 
   return {
     notifications,
     addNotification,
     dismissNotification,
     clearAll,
-    NotificationCenter: () => (
-      <NotificationCenter notifications={notifications} onDismiss={dismissNotification} />
-    ),
   };
 }

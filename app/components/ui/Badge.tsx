@@ -5,21 +5,21 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { classNames } from '~/utils/classNames';
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 transition-colors focus:outline-none focus:ring-2 focus:ring-smack-elements-ring focus:ring-offset-2',
+  'inline-flex items-center gap-1 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2',
   {
     variants: {
       variant: {
         default:
-          'border-transparent bg-smack-elements-background text-smack-elements-textPrimary hover:bg-smack-elements-background/80',
+          'border-transparent bg-smack-elements-background text-smack-elements-textPrimary hover:bg-smack-elements-background-depth-2',
         secondary:
-          'border-transparent bg-smack-elements-background text-smack-elements-textSecondary hover:bg-smack-elements-background/80',
+          'border-transparent bg-smack-elements-background-depth-2 text-smack-elements-textSecondary hover:bg-smack-elements-background-depth-3',
         destructive: 'border-transparent bg-red-500/10 text-red-500 hover:bg-red-500/20',
-        outline: 'text-smack-elements-textPrimary',
-        primary: 'bg-red-500/10 text-red-600 dark:text-red-400',
-        success: 'bg-green-500/10 text-green-600 dark:text-green-400',
-        warning: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-        danger: 'bg-red-500/10 text-red-600 dark:text-red-400',
-        info: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+        outline: 'border border-smack-elements-borderColor text-smack-elements-textPrimary',
+        primary: 'border-transparent bg-accent/10 text-accent-600 dark:text-accent-400',
+        success: 'border-transparent bg-green-500/10 text-green-600 dark:text-green-400',
+        warning: 'border-transparent bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+        danger: 'border-transparent bg-red-500/10 text-red-600 dark:text-red-400',
+        info: 'border-transparent bg-blue-500/10 text-blue-600 dark:text-blue-400',
         subtle:
           'border border-smack-elements-borderColor/30 dark:border-smack-elements-borderColor-dark/30 bg-white/50 dark:bg-smack-elements-background-depth-4/50 backdrop-blur-sm text-smack-elements-textSecondary dark:text-smack-elements-textSecondary-dark',
       },

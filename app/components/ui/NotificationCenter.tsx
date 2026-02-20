@@ -48,15 +48,17 @@ const iconColors = {
 
 export function NotificationCenter({ notifications, onDismiss }: NotificationCenterProps) {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-md">
       <AnimatePresence>
-        {notifications.map((notification) => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onDismiss={() => onDismiss(notification.id)}
-          />
-        ))}
+        {notifications.map(function(notification) {
+          return (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              onDismiss={function() { return onDismiss(notification.id) }}
+            />
+          );
+        })}
       </AnimatePresence>
     </div>
   );
@@ -67,20 +69,20 @@ function NotificationItem({ notification, onDismiss }: { notification: Notificat
   const onDismissRef = useRef(onDismiss);
 
   // Keep the ref in sync with the latest callback
-  useEffect(() => {
+  useEffect(function() {
     onDismissRef.current = onDismiss;
   });
 
-  useEffect(() => {
-    if (notification.duration) {
-      const timer = setTimeout(() => {
+  useEffect(function() {
+    if (notification.duration != null) {
+      const timer = setTimeout(function() {
         onDismissRef.current();
       }, notification.duration);
-      return () => clearTimeout(timer);
+      return function() { return clearTimeout(timer) };
     }
   }, [notification.duration]);
 
-  const handleDismiss = () => {
+  const handleDismiss = function() {
     onDismissRef.current();
   };
 
@@ -89,24 +91,34 @@ function NotificationItem({ notification, onDismiss }: { notification: Notificat
       initial={{ opacity: 0, x: 100, scale: 0.9 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 100, scale: 0.9 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={classNames(
-        'rounded-lg border p-4 shadow-lg backdrop-blur-sm',
+        'rounded-xl border p-4 shadow-xl backdrop-blur-md bg-smack-elements-background-depth-2/95',
         colors[notification.type]
       )}
     >
       <div className="flex items-start gap-3">
-        <Icon className={classNames('w-5 h-5 mt-0.5 flex-shrink-0', iconColors[notification.type])} />
+        <div className={classNames(
+          'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+          iconColors[notification.type],
+          notification.type === 'info' && 'bg-blue-500/10',
+          notification.type === 'success' && 'bg-green-500/10',
+          notification.type === 'warning' && 'bg-yellow-500/10',
+          notification.type === 'error' && 'bg-red-500/10'
+        )}>
+          <Icon className={classNames('w-5 h-5', iconColors[notification.type])} />
+        </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-gray-900 dark:text-white">{notification.title}</h4>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{notification.message}</p>
+          <h4 className="font-semibold text-smack-elements-textPrimary mb-1">{notification.title}</h4>
+          <p className="text-sm text-smack-elements-textSecondary leading-relaxed">{notification.message}</p>
         </div>
         {notification.dismissible !== false && (
           <button
             onClick={handleDismiss}
             aria-label="Dismiss notification"
-            className="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            className="flex-shrink-0 p-2 rounded-lg hover:bg-smack-elements-background-depth-3 transition-all duration-200 hover:scale-105"
           >
-            <HiOutlineX className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <HiOutlineX className="w-4 h-4 text-smack-elements-textTertiary hover:text-smack-elements-textSecondary" />
           </button>
         )}
       </div>

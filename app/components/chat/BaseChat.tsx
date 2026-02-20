@@ -359,10 +359,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             {!chatStarted && (
               <div id="intro" className="mt-[16vh] max-w-2xl mx-auto text-center px-4 lg:px-0">
                 <h1 className="text-3xl lg:text-6xl font-bold text-smack-elements-textPrimary mb-4 animate-fade-in">
-                  Where you can start shutting down the smack talkers
+                  Where you can start building with AI
                 </h1>
                 <p className="text-md lg:text-xl mb-8 text-smack-elements-textSecondary animate-fade-in animation-delay-200">
-                  Bring Smack talkers down
+                  Bring your ideas to life with Smack
                 </p>
               </div>
             )}
